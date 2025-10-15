@@ -1,7 +1,8 @@
-import http from "./httpService";
 import { jwtDecode } from "jwt-decode";
 
-const ApiEndPoint = `${process.env.NEXT_PUBLIC_BACKEND}/auth`;
+import http from "./httpService";
+
+const RESOURCE = "/auth";
 
 // if user is authenticated, return user object
 export function authenticate({
@@ -11,7 +12,7 @@ export function authenticate({
   username: string;
   password: string;
 }) {
-  return http.post(`${ApiEndPoint}/login`, { username, password });
+  return http.post(`${RESOURCE}/login`, { username, password });
 }
 
 export function registerEmployee({
@@ -31,7 +32,7 @@ export function registerEmployee({
   branch_id: number;
   employee_image: string;
 }) {
-  return http.post(`${ApiEndPoint}/register`, {
+  return http.post(`${RESOURCE}/register`, {
     employee_name,
     employee_userName,
     employee_email,
@@ -47,7 +48,7 @@ export function resetPassword(
   password: string,
   newPassword: string
 ) {
-  return http.put(`${ApiEndPoint}/resetPassword`, {
+  return http.put(`${RESOURCE}/resetPassword`, {
     username,
     password,
     newPassword,

@@ -47,10 +47,7 @@ interface SaleCartTableProps {
 const formatCurrency = (value: number) =>
   `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
 
-const SaleCartTable = ({
-  sortColumn,
-  onSort,
-}: SaleCartTableProps): JSX.Element => {
+const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
   const { cart, setCart } = useContext(CartContext) as {
     cart: CartItem[];
     setCart: (items: CartItem[]) => void;
