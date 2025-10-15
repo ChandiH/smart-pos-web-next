@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 
-import AccessFrame from "@/components/accessFrame";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -187,34 +186,74 @@ const EmployeeForm = () => {
   };
 
   return (
-    <AccessFrame accessLevel="addEmployee" onDenied={() => router.back()}>
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">
-            {isEditing ? "Edit Employee" : "Add New Employee"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Loading form data…
-            </div>
-          ) : (
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(handleSubmit)}
-                className="space-y-6"
-              >
+    <Card className="w-full max-w-2xl">
+      <CardHeader>
+        <CardTitle className="text-xl font-semibold">
+          {isEditing ? "Edit Employee" : "Add New Employee"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Loading form data…
+          </div>
+        ) : (
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="space-y-6"
+            >
+              <FormField
+                control={form.control}
+                name="employee_name"
+                rules={{ required: "Name is required" }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Jane Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="employee_userName"
+                rules={{ required: "Username is required" }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="jane.doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="employee_name"
-                  rules={{ required: "Name is required" }}
+                  name="employee_email"
+                  rules={{
+                    required: "Email is required",
+                    pattern: {
+                      value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                      message: "Enter a valid email address",
+                    },
+                  }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jane Doe" {...field} />
+                        <Input
+                          type="email"
+                          placeholder="jane.doe@example.com"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -223,165 +262,118 @@ const EmployeeForm = () => {
 
                 <FormField
                   control={form.control}
-                  name="employee_userName"
-                  rules={{ required: "Username is required" }}
+                  name="employee_phone"
+                  rules={{
+                    required: "Contact number is required",
+                    minLength: {
+                      value: 7,
+                      message: "Contact number is too short",
+                    },
+                  }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel>Contact</FormLabel>
                       <FormControl>
-                        <Input placeholder="jane.doe" {...field} />
+                        <Input type="tel" placeholder="0712345678" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="branch_id"
+                  rules={{ required: "Branch is required" }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Branch</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a branch" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {branches.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="grid gap-6 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="employee_email"
-                    rules={{
-                      required: "Email is required",
-                      pattern: {
-                        value:
-                          /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                        message: "Enter a valid email address",
-                      },
-                    }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="jane.doe@example.com"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="role_id"
+                  rules={{ required: "User role is required" }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>User Role</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {userRoles.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                  <FormField
-                    control={form.control}
-                    name="employee_phone"
-                    rules={{
-                      required: "Contact number is required",
-                      minLength: {
-                        value: 7,
-                        message: "Contact number is too short",
-                      },
-                    }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contact</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="tel"
-                            placeholder="0712345678"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+              <CardFooter className="px-0">
+                <div className="flex w-full items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.back()}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitDisabled}>
+                    {isSubmitting && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                  />
+                    {isEditing ? "Save Changes" : "Create Employee"}
+                  </Button>
                 </div>
-
-                <div className="grid gap-6 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="branch_id"
-                    rules={{ required: "Branch is required" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Branch</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a branch" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {branches.map((option) => (
-                                  <SelectItem
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="role_id"
-                    rules={{ required: "User role is required" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>User Role</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {userRoles.map((option) => (
-                                  <SelectItem
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <CardFooter className="px-0">
-                  <div className="flex w-full items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.back()}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={isSubmitDisabled}>
-                      {isSubmitting && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      {isEditing ? "Save Changes" : "Create Employee"}
-                    </Button>
-                  </div>
-                </CardFooter>
-              </form>
-            </Form>
-          )}
-        </CardContent>
-      </Card>
-    </AccessFrame>
+              </CardFooter>
+            </form>
+          </Form>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

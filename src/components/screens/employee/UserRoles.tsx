@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import orderBy from "lodash/orderBy";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
-import AccessFrame from "@/components/accessFrame";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -196,181 +195,176 @@ const UserRoles = () => {
   }, [showForm, newRoleName, isSaving, isSettingChanged, selectedRole]);
 
   return (
-    <AccessFrame
-      accessLevel="configuration"
-      message="You do not have permission to manage user roles. Please contact your branch manager."
-    >
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-lg font-semibold">
-              User Roles
-              <Button size="sm" onClick={handleCreateNewRole}>
-                <Plus className="mr-1 h-4 w-4" />
-                New Role
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search roles…"
-            />
-            <div className="overflow-hidden rounded-lg border">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-10 text-muted-foreground">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Loading roles…
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead
-                        className="cursor-pointer"
-                        onClick={() => handleSort("role_name")}
-                      >
-                        Role Name
-                      </TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedRoles.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={2}
-                          className="py-8 text-center text-sm text-muted-foreground"
-                        >
-                          No roles found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      sortedRoles.map((role: any) => (
-                        <TableRow
-                          key={role.role_id as string}
-                          className={
-                            selectedRole?.role_id === role.role_id
-                              ? "bg-muted/40"
-                              : undefined
-                          }
-                        >
-                          <TableCell>{role.role_name}</TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRoleSelect(role)}
-                              >
-                                Select
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleRoleDelete(role)}
-                                disabled={
-                                  role.role_name.toLowerCase() === "owner"
-                                }
-                              >
-                                <Trash2 className="mr-1 h-3.5 w-3.5" />
-                                Delete
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">
-              {showForm
-                ? "Create New User Role"
-                : selectedRole?.role_name ?? "Select a role"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {showForm ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Role Name</label>
-                  <Input
-                    value={newRoleName}
-                    onChange={(event) => setNewRoleName(event.target.value)}
-                    placeholder="Enter role name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
-                  <Input
-                    value={newRoleDesc}
-                    onChange={(event) => setNewRoleDesc(event.target.value)}
-                    placeholder="Optional description"
-                  />
-                </div>
-              </div>
-            ) : selectedRole ? (
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>{selectedRole.role_desc ?? "No description available."}</p>
+    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-lg font-semibold">
+            User Roles
+            <Button size="sm" onClick={handleCreateNewRole}>
+              <Plus className="mr-1 h-4 w-4" />
+              New Role
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search roles…"
+          />
+          <div className="overflow-hidden rounded-lg border">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Loading roles…
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Select a role to view and edit its permissions.
-              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead
+                      className="cursor-pointer"
+                      onClick={() => handleSort("role_name")}
+                    >
+                      Role Name
+                    </TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedRoles.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={2}
+                        className="py-8 text-center text-sm text-muted-foreground"
+                      >
+                        No roles found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sortedRoles.map((role: any) => (
+                      <TableRow
+                        key={role.role_id as string}
+                        className={
+                          selectedRole?.role_id === role.role_id
+                            ? "bg-muted/40"
+                            : undefined
+                        }
+                      >
+                        <TableCell>{role.role_name}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRoleSelect(role)}
+                            >
+                              Select
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRoleDelete(role)}
+                              disabled={
+                                role.role_name.toLowerCase() === "owner"
+                              }
+                            >
+                              <Trash2 className="mr-1 h-3.5 w-3.5" />
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             )}
+          </div>
+        </CardContent>
+      </Card>
 
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Permissions</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {accessLevels.map((access) => (
-                  <label
-                    key={access.access_type_id}
-                    className="flex items-center gap-2 rounded-md border p-3"
-                  >
-                    <Checkbox
-                      checked={selectedAccess.includes(access.access_type_id)}
-                      onCheckedChange={() =>
-                        handleAccessToggle(access.access_type_id)
-                      }
-                    />
-                    <span className="text-sm capitalize">
-                      {access.access_name.replace(/([A-Z])/g, " $1").trim()}
-                    </span>
-                  </label>
-                ))}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">
+            {showForm
+              ? "Create New User Role"
+              : selectedRole?.role_name ?? "Select a role"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {showForm ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Role Name</label>
+                <Input
+                  value={newRoleName}
+                  onChange={(event) => setNewRoleName(event.target.value)}
+                  placeholder="Enter role name"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description</label>
+                <Input
+                  value={newRoleDesc}
+                  onChange={(event) => setNewRoleDesc(event.target.value)}
+                  placeholder="Optional description"
+                />
               </div>
             </div>
-          </CardContent>
-          <CardFooter className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowForm(false);
-                setSelectedRole(null);
-                setSelectedAccess([]);
-                setNewRoleDesc("");
-                setNewRoleName("");
-                setIsSettingChanged(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSaveChanges} disabled={isSaveDisabled}>
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    </AccessFrame>
+          ) : selectedRole ? (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>{selectedRole.role_desc ?? "No description available."}</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Select a role to view and edit its permissions.
+            </p>
+          )}
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Permissions</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {accessLevels.map((access) => (
+                <label
+                  key={access.access_type_id}
+                  className="flex items-center gap-2 rounded-md border p-3"
+                >
+                  <Checkbox
+                    checked={selectedAccess.includes(access.access_type_id)}
+                    onCheckedChange={() =>
+                      handleAccessToggle(access.access_type_id)
+                    }
+                  />
+                  <span className="text-sm capitalize">
+                    {access.access_name.replace(/([A-Z])/g, " $1").trim()}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowForm(false);
+              setSelectedRole(null);
+              setSelectedAccess([]);
+              setNewRoleDesc("");
+              setNewRoleName("");
+              setIsSettingChanged(false);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSaveChanges} disabled={isSaveDisabled}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   );
 };
 

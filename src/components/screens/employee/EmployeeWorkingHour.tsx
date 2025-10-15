@@ -4,7 +4,6 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import orderBy from "lodash/orderBy";
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
 
-import AccessFrame from "@/components/accessFrame";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -260,181 +259,176 @@ const EmployeeWorkingHour = () => {
   };
 
   return (
-    <AccessFrame
-      accessLevel="employee"
-      message="You do not have permission to manage employee working hours. Please contact your manager."
-    >
-      <div className="space-y-6">
-        <Card>
-          <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-lg font-semibold">
-                Record Employee Working Hours
-              </CardTitle>
-              <CardDescription>
-                {user.branch_name
-                  ? `${user.branch_name} branch`
-                  : "Assign employees to shifts"}
-              </CardDescription>
-            </div>
-            <div className="w-full max-w-xs">
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(event) => handleDateSelect(event.target.value)}
-                max={today()}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Loading employees…
-              </div>
-            ) : sortedUnmarkedEmployees.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead
-                        className="cursor-pointer"
-                        onClick={() => handleSort("employee_id")}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          ID
-                          {renderSortIcon("employee_id")}
-                        </span>
-                      </TableHead>
-                      <TableHead
-                        className="cursor-pointer"
-                        onClick={() => handleSort("employee_name")}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          Name
-                          {renderSortIcon("employee_name")}
-                        </span>
-                      </TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead className="w-[140px]">Shift On</TableHead>
-                      <TableHead className="w-[140px]">Shift Off</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedUnmarkedEmployees.map((employee) => (
-                      <TableRow key={employee.employee_id}>
-                        <TableCell>{employee.employee_id}</TableCell>
-                        <TableCell className="font-medium">
-                          {employee.employee_name}
-                        </TableCell>
-                        <TableCell>{employee.role_name ?? "—"}</TableCell>
-                        <TableCell>
-                          <Input
-                            type="time"
-                            value={employee.shift_on}
-                            onChange={(event) =>
-                              handleTimeChange(
-                                employee,
-                                "shift_on",
-                                event.target.value
-                              )
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="time"
-                            value={employee.shift_off}
-                            onChange={(event) =>
-                              handleTimeChange(
-                                employee,
-                                "shift_off",
-                                event.target.value
-                              )
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => submitLeaveRecord(employee)}
-                          >
-                            Leave
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => submitRecord(employee)}
-                            disabled={!validateRecord(employee)}
-                          >
-                            Save
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                All employee records for this date are already recorded. Review
-                them below.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
             <CardTitle className="text-lg font-semibold">
-              Recorded Working Hours on {selectedDate}
+              Record Employee Working Hours
             </CardTitle>
-          </CardHeader>
-          <CardContent>
+            <CardDescription>
+              {user.branch_name
+                ? `${user.branch_name} branch`
+                : "Assign employees to shifts"}
+            </CardDescription>
+          </div>
+          <div className="w-full max-w-xs">
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => handleDateSelect(event.target.value)}
+              max={today()}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Loading employees…
+            </div>
+          ) : sortedUnmarkedEmployees.length > 0 ? (
             <div className="overflow-hidden rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
+                    <TableHead
+                      className="cursor-pointer"
+                      onClick={() => handleSort("employee_id")}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        ID
+                        {renderSortIcon("employee_id")}
+                      </span>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer"
+                      onClick={() => handleSort("employee_name")}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Name
+                        {renderSortIcon("employee_name")}
+                      </span>
+                    </TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Shift On</TableHead>
-                    <TableHead>Shift Off</TableHead>
-                    <TableHead>Total Hours</TableHead>
+                    <TableHead className="w-[140px]">Shift On</TableHead>
+                    <TableHead className="w-[140px]">Shift Off</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {markedEmployees.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={6}
-                        className="py-10 text-center text-sm text-muted-foreground"
-                      >
-                        No records found for this date.
+                  {sortedUnmarkedEmployees.map((employee) => (
+                    <TableRow key={employee.employee_id}>
+                      <TableCell>{employee.employee_id}</TableCell>
+                      <TableCell className="font-medium">
+                        {employee.employee_name}
+                      </TableCell>
+                      <TableCell>{employee.role_name ?? "—"}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="time"
+                          value={employee.shift_on}
+                          onChange={(event) =>
+                            handleTimeChange(
+                              employee,
+                              "shift_on",
+                              event.target.value
+                            )
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="time"
+                          value={employee.shift_off}
+                          onChange={(event) =>
+                            handleTimeChange(
+                              employee,
+                              "shift_off",
+                              event.target.value
+                            )
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => submitLeaveRecord(employee)}
+                        >
+                          Leave
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => submitRecord(employee)}
+                          disabled={!validateRecord(employee)}
+                        >
+                          Save
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    markedEmployees.map((item) => (
-                      <TableRow key={`${item.employee_id}-${item.date}`}>
-                        <TableCell>{item.employee_id}</TableCell>
-                        <TableCell className="font-medium">
-                          {item.employee_name}
-                        </TableCell>
-                        <TableCell>{item.role_name ?? "—"}</TableCell>
-                        <TableCell>{item.shift_on}</TableCell>
-                        <TableCell>{item.shift_off}</TableCell>
-                        <TableCell>{item.total_hours}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AccessFrame>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              All employee records for this date are already recorded. Review
+              them below.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">
+            Recorded Working Hours on {selectedDate}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-hidden rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Shift On</TableHead>
+                  <TableHead>Shift Off</TableHead>
+                  <TableHead>Total Hours</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {markedEmployees.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="py-10 text-center text-sm text-muted-foreground"
+                    >
+                      No records found for this date.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  markedEmployees.map((item) => (
+                    <TableRow key={`${item.employee_id}-${item.date}`}>
+                      <TableCell>{item.employee_id}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.employee_name}
+                      </TableCell>
+                      <TableCell>{item.role_name ?? "—"}</TableCell>
+                      <TableCell>{item.shift_on}</TableCell>
+                      <TableCell>{item.shift_off}</TableCell>
+                      <TableCell>{item.total_hours}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

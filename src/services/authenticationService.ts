@@ -15,31 +15,25 @@ export function authenticate({
   return http.post(`${RESOURCE}/login`, { username, password });
 }
 
-export function registerEmployee({
-  employee_name,
-  employee_userName,
-  role_id,
-  employee_email,
-  employee_phone,
-  branch_id,
-  employee_image,
-}: {
+type RegisterEmployeePayload = {
   employee_name: string;
   employee_userName: string;
-  role_id: number;
+  role_id: number | string;
   employee_email: string;
   employee_phone: string;
-  branch_id: number;
-  employee_image: string;
-}) {
+  branch_id: number | string;
+  employee_image?: string;
+};
+
+export function registerEmployee(payload: RegisterEmployeePayload) {
   return http.post(`${RESOURCE}/register`, {
-    employee_name,
-    employee_userName,
-    employee_email,
-    employee_phone,
-    employee_image,
-    branch_id,
-    role_id,
+    employee_name: payload.employee_name,
+    employee_userName: payload.employee_userName,
+    employee_email: payload.employee_email,
+    employee_phone: payload.employee_phone,
+    employee_image: payload.employee_image ?? "",
+    branch_id: Number(payload.branch_id),
+    role_id: Number(payload.role_id),
   });
 }
 

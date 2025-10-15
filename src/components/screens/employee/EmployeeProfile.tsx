@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-import AccessFrame from "@/components/accessFrame";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -205,136 +204,131 @@ const EmployeeProfile = () => {
   }
 
   return (
-    <AccessFrame
-      accessLevel="employeeDetails"
-      onDenied={() => router.replace("/employee")}
-    >
-      <Card className="w-full max-w-4xl">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">
-            Employee Profile
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative h-64 w-64 overflow-hidden rounded-xl border">
-                <Image
-                  src={
-                    employee.employee_image
-                      ? getImageUrl(employee.employee_image)
-                      : "https://placehold.co/400x400/png"
-                  }
-                  alt={employee.employee_name ?? "Employee"}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                  sizes="256px"
-                />
-              </div>
-              <div className="space-y-1 text-center">
-                <p className="text-lg font-semibold">
-                  {employee.employee_name ?? "Unnamed Employee"}
-                </p>
-                <p className="text-sm text-muted-foreground">{roleLabel}</p>
-              </div>
+    <Card className="w-full max-w-4xl">
+      <CardHeader>
+        <CardTitle className="text-xl font-semibold">
+          Employee Profile
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative h-64 w-64 overflow-hidden rounded-xl border">
+              <Image
+                src={
+                  employee.employee_image
+                    ? getImageUrl(employee.employee_image)
+                    : "https://placehold.co/400x400/png"
+                }
+                alt={employee.employee_name ?? "Employee"}
+                fill
+                className="object-cover"
+                unoptimized
+                sizes="256px"
+              />
             </div>
-
-            <div className="space-y-6">
-              <div>
-                <Label className="text-xs uppercase text-muted-foreground">
-                  Branch
-                </Label>
-                <p className="text-base font-medium">{branchLabel}</p>
-              </div>
-              <Separator />
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1">
-                  <Label className="text-xs uppercase text-muted-foreground">
-                    Email
-                  </Label>
-                  <p>{employee.employee_email ?? "Not available"}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs uppercase text-muted-foreground">
-                    Contact
-                  </Label>
-                  <p>
-                    {employee.employee_phone ??
-                      (employee.employee_contact as string | undefined) ??
-                      "Not available"}
-                  </p>
-                </div>
-              </div>
+            <div className="space-y-1 text-center">
+              <p className="text-lg font-semibold">
+                {employee.employee_name ?? "Unnamed Employee"}
+              </p>
+              <p className="text-sm text-muted-foreground">{roleLabel}</p>
             </div>
           </div>
-
-          <Separator />
 
           <div className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Assign New Branch</Label>
-                <Select
-                  value={selectedBranch}
-                  onValueChange={setSelectedBranch}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.value} value={branch.value}>
-                          {branch.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Change User Role</Label>
-                <Select
-                  value={selectedRole}
-                  onValueChange={setSelectedRole}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {roles.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">
+                Branch
+              </Label>
+              <p className="text-base font-medium">{branchLabel}</p>
             </div>
-
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <Button variant="outline" onClick={() => router.back()}>
-                Back
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={
-                  isSaving || (!selectedBranch && !selectedRole) || isLoading
-                }
-              >
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
+            <Separator />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-xs uppercase text-muted-foreground">
+                  Email
+                </Label>
+                <p>{employee.employee_email ?? "Not available"}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase text-muted-foreground">
+                  Contact
+                </Label>
+                <p>
+                  {employee.employee_phone ??
+                    (employee.employee_contact as string | undefined) ??
+                    "Not available"}
+                </p>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </AccessFrame>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Assign New Branch</Label>
+              <Select
+                value={selectedBranch}
+                onValueChange={setSelectedBranch}
+                disabled={isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.value} value={branch.value}>
+                        {branch.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Change User Role</Label>
+              <Select
+                value={selectedRole}
+                onValueChange={setSelectedRole}
+                disabled={isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {roles.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Button variant="outline" onClick={() => router.back()}>
+              Back
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={
+                isSaving || (!selectedBranch && !selectedRole) || isLoading
+              }
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
