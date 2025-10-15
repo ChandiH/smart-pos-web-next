@@ -18,9 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { Toast } from "@/components/ui";
 import { getImageUrl } from "@/services/imageHandler";
 import { updateEmployeeImage } from "@/services/employeeService";
-import VerifyUserDialog from "@/components/screens/user/VerifyUserDialog";
-import UploadImageDialog from "@/components/screens/user/UploadImageDialog";
-import ChangePasswordDialog from "@/components/screens/user/ChangePasswordDialog";
+import VerifyUserDialog from "@/components/employee/VerifyUserDialog";
+import UploadImageDialog from "@/components/employee/UploadImageDialog";
+import ChangePasswordDialog from "@/components/employee/ChangePasswordDialog";
 
 type EditableField = {
   key: keyof UserCredentials;
@@ -165,7 +165,9 @@ const UserProfile = () => {
       <Card className="w-full">
         <CardHeader className="flex flex-col gap-4 border-b border-border xl:flex-row xl:items-center xl:justify-between">
           <div className="space-y-2">
-            <CardTitle className="text-xl font-semibold">User Profile</CardTitle>
+            <CardTitle className="text-xl font-semibold">
+              User Profile
+            </CardTitle>
             <CardDescription>
               View and manage your personal account information.
             </CardDescription>
@@ -234,36 +236,38 @@ const UserProfile = () => {
           </div>
 
           <div className="grid gap-6">
-            {editableFields.map(({ key, label, editable, placeholder, type }) => {
-              const value = editedUser[key];
-              const displayValue =
-                value === undefined || value === null || value === ""
-                  ? "Not provided"
-                  : value;
+            {editableFields.map(
+              ({ key, label, editable, placeholder, type }) => {
+                const value = editedUser[key];
+                const displayValue =
+                  value === undefined || value === null || value === ""
+                    ? "Not provided"
+                    : value;
 
-              return (
-                <div key={key} className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {label}
-                  </p>
-                  {editable && isEditing ? (
-                    <Input
-                      value={String(value ?? "")}
-                      onChange={(event) =>
-                        handleInputChange(
-                          key,
-                          event.target.value as UserCredentials[typeof key]
-                        )
-                      }
-                      placeholder={placeholder}
-                      type={type}
-                    />
-                  ) : (
-                    <p className="text-base font-medium">{displayValue}</p>
-                  )}
-                </div>
-              );
-            })}
+                return (
+                  <div key={key} className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {label}
+                    </p>
+                    {editable && isEditing ? (
+                      <Input
+                        value={String(value ?? "")}
+                        onChange={(event) =>
+                          handleInputChange(
+                            key,
+                            event.target.value as UserCredentials[typeof key]
+                          )
+                        }
+                        placeholder={placeholder}
+                        type={type}
+                      />
+                    ) : (
+                      <p className="text-base font-medium">{displayValue}</p>
+                    )}
+                  </div>
+                );
+              }
+            )}
           </div>
         </CardContent>
       </Card>
