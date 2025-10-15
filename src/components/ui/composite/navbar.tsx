@@ -2,7 +2,15 @@
 
 import * as React from "react";
 import { useEffect, useState, useRef } from "react";
-import { BookOpenIcon, InfoIcon, LifeBuoyIcon, User } from "lucide-react";
+import {
+  BookOpenIcon,
+  InfoIcon,
+  LifeBuoyIcon,
+  Network,
+  Store,
+  Truck,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -99,6 +107,8 @@ export interface NavbarNavItem {
   label: string;
   submenu?: boolean;
   type?: "description" | "simple" | "icon";
+  additionalInfo?: string;
+  Icon?: React.ReactNode;
   items?: Array<{
     href: string;
     label: string;
@@ -117,52 +127,75 @@ export interface NavbarProps extends React.HTMLAttributes<HTMLElement> {
 const defaultNavigationLinks: NavbarNavItem[] = [
   { href: "/sale", label: "CASHIER" },
   {
-    label: "Features",
+    label: "INVENTORY",
     submenu: true,
     type: "description",
+    additionalInfo: "Inventory management options",
+    Icon: <Store />,
     items: [
       {
-        href: "#components",
-        label: "Components",
+        href: "/inventory/catalog",
+        label: "Catalog",
         description: "Browse all components in the library.",
       },
       {
-        href: "#documentation",
-        label: "Documentation",
+        href: "/inventory/update",
+        label: "Stock Update",
+        description: "Learn how to use the library.",
+      },
+    ],
+  },
+  { href: "/customers", label: "CUSTOMERS" },
+  { href: "/suppliers", label: "SUPPLIERS" },
+  {
+    label: "EMPLOYEES",
+    submenu: true,
+    type: "description",
+    additionalInfo: "Employee management options",
+    Icon: <Network />,
+    items: [
+      {
+        href: "/employee",
+        label: "Employees",
+        description: "Browse all components in the library.",
+      },
+      {
+        href: "/employee/working",
+        label: "Attendance",
         description: "Learn how to use the library.",
       },
       {
-        href: "#templates",
-        label: "Templates",
-        description: "Pre-built layouts for common use cases.",
+        href: "/employee/roles",
+        label: "Roles",
+        description: "Learn how to use the library.",
       },
     ],
   },
-  {
-    label: "Pricing",
-    submenu: true,
-    type: "simple",
-    items: [
-      { href: "#product-a", label: "Product A" },
-      { href: "#product-b", label: "Product B" },
-      { href: "#product-c", label: "Product C" },
-      { href: "#product-d", label: "Product D" },
-    ],
-  },
-  {
-    label: "About",
-    submenu: true,
-    type: "icon",
-    items: [
-      {
-        href: "#getting-started",
-        label: "Getting Started",
-        icon: "BookOpenIcon",
-      },
-      { href: "#tutorials", label: "Tutorials", icon: "LifeBuoyIcon" },
-      { href: "#about-us", label: "About Us", icon: "InfoIcon" },
-    ],
-  },
+  // {
+  //   label: "Pricing",
+  //   submenu: true,
+  //   type: "simple",
+  //   items: [
+  //     { href: "#product-a", label: "Product A" },
+  //     { href: "#product-b", label: "Product B" },
+  //     { href: "#product-c", label: "Product C" },
+  //     { href: "#product-d", label: "Product D" },
+  //   ],
+  // },
+  // {
+  //   label: "About",
+  //   submenu: true,
+  //   type: "icon",
+  //   items: [
+  //     {
+  //       href: "#getting-started",
+  //       label: "Getting Started",
+  //       icon: "BookOpenIcon",
+  //     },
+  //     { href: "#tutorials", label: "Tutorials", icon: "LifeBuoyIcon" },
+  //     { href: "#about-us", label: "About Us", icon: "InfoIcon" },
+  //   ],
+  // },
   { href: "/config", label: "CONFIG" },
 ];
 
@@ -347,8 +380,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
                               {link.label}
                             </NavigationMenuTrigger>
                             <NavigationMenuContent>
-                              {link.type === "description" &&
-                              link.label === "Features" ? (
+                              {link.type === "description" ? (
                                 <div className="grid gap-3 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                                   <div className="row-span-3">
                                     <NavigationMenuLink asChild>
@@ -356,12 +388,16 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
                                         onClick={(e) => e.preventDefault()}
                                         className="flex h-full w-full select-none flex-col justify-center items-center text-center rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md cursor-pointer"
                                       >
+                                        {link.Icon && (
+                                          <div className="mb-2">
+                                            {link.Icon}
+                                          </div>
+                                        )}
                                         <div className="mb-3 text-xl font-medium">
-                                          shadcn.io
+                                          {link.label}
                                         </div>
                                         <p className="text-sm leading-tight text-muted-foreground">
-                                          Beautifully designed components built
-                                          with Radix UI and Tailwind CSS.
+                                          {link.additionalInfo}
                                         </p>
                                       </button>
                                     </NavigationMenuLink>
@@ -372,6 +408,9 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
                                       title={item.label}
                                       href={item.href}
                                       type={link.type}
+                                      onClick={() =>
+                                        handleNavItemClick(item.href)
+                                      }
                                     >
                                       {item.description}
                                     </ListItem>
@@ -474,8 +513,9 @@ const ListItem = React.forwardRef<
     icon?: string;
     type?: "description" | "simple" | "icon";
     children?: React.ReactNode;
+    onClick?: () => void;
   }
->(({ className, title, children, icon, type, ...props }, ref) => {
+>(({ className, title, children, icon, type, onClick, ...props }, ref) => {
   const renderIconComponent = (iconName?: string) => {
     if (!iconName) return null;
     switch (iconName) {
@@ -494,7 +534,10 @@ const ListItem = React.forwardRef<
     <NavigationMenuLink asChild>
       <a
         ref={ref}
-        onClick={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.preventDefault();
+          onClick?.();
+        }}
         className={cn(
           "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground cursor-pointer",
           className
