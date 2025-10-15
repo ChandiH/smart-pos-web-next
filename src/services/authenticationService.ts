@@ -1,6 +1,7 @@
 import { jwtDecode } from "jwt-decode";
 
 import http from "./httpService";
+import { UserCredentials } from "@/context/UserContext";
 
 const RESOURCE = "/auth";
 
@@ -49,6 +50,6 @@ export function resetPassword(
   });
 }
 
-export function decodeJWT(token: string) {
+export function decodeJWT(token: string): UserCredentials {
   return jwtDecode(token);
 }
