@@ -1,13 +1,13 @@
 "use client";
 
-import UserContext from "@/context/UserContext";
+import UserContext, { UserCredentials } from "@/context/UserContext";
 import { decodeJWT } from "@/services/authenticationService";
-import { JwtPayload } from "jwt-decode";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<JwtPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserCredentials | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -18,12 +18,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return;
-    setCurrentUser(decodeJWT(token));
+
+    if (token) {
+      try {
+        setCurrentUser(decodeJWT(token) as UserCredentials);
+      } catch (error) {
+        console.error("Failed to decode token", error);
+        localStorage.removeItem("token");
+        setCurrentUser(null);
+      }
+    }
+
+    setLoading(false);
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setCurrentUser(null);
+  };
+
   return (
-    <UserContext.Provider value={{ currentUser, setCurrentUser }}>
+    <UserContext.Provider
+      value={{ loading, currentUser, setCurrentUser, handleLogout }}
+    >
       {children}
     </UserContext.Provider>
   );

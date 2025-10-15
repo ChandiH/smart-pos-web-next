@@ -6,6 +6,8 @@ import UserContext from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
 import { accessList } from "@/services/authorizationService";
 import type { AccessPermission } from "@/services/types";
+import { useRouter } from "next/navigation";
+import { Spinner } from "./ui";
 
 type UserWithAccess = {
   user_access?: number[];
@@ -32,9 +34,14 @@ const AccessFrame = ({
   onDenied,
   message = DEFAULT_MESSAGE,
 }: AccessFrameProps) => {
-  const { currentUser } = useContext(UserContext);
+  const { loading, currentUser } = useContext(UserContext);
+  const router = useRouter();
 
   const hasAccess = useMemo(() => {
+    if (loading) {
+      return null;
+    }
+
     if (
       !accessLevel ||
       (Array.isArray(accessLevel) && accessLevel.length === 0)
@@ -58,13 +65,27 @@ const AccessFrame = ({
       }
       return userAccess.includes(permission.access_type_id);
     });
-  }, [accessLevel, currentUser]);
+  }, [accessLevel, currentUser, loading]);
 
   useEffect(() => {
-    if (!hasAccess) {
+    if (hasAccess === false) {
       onDenied?.();
     }
   }, [hasAccess, onDenied]);
+
+  useEffect(() => {
+    if (!loading && !currentUser) {
+      router.replace("/login");
+    }
+  }, [loading, currentUser, router]);
+
+  if (loading || hasAccess === null) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (!hasAccess) {
     return (

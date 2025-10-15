@@ -27,9 +27,7 @@ const createProductFormData = (
   formData.append("category_id", String(payload.category_id ?? ""));
   formData.append(
     "product_image",
-    payload.product_image !== undefined
-      ? String(payload.product_image)
-      : ""
+    payload.product_image !== undefined ? String(payload.product_image) : ""
   );
   formData.append("buying_price", String(payload.buying_price));
   formData.append("retail_price", String(payload.retail_price));
@@ -55,19 +53,14 @@ export const saveProduct = (
   data: ProductFormPayload,
   files: File[] | FileList
 ) =>
-  http.post<Product>(
-    RESOURCE,
-    createProductFormData(data, files),
-    {
-      headers: { "content-type": "multipart/form-data" },
-    }
-  );
+  http.post<Product>(RESOURCE, createProductFormData(data, files), {
+    headers: { "content-type": "multipart/form-data" },
+  });
 
 export const updateProductDiscount = (
   productId: Identifier,
-  discount: number
-) =>
-  http.put<Product>(`${RESOURCE}/discount/${productId}`, { discount });
+  discount: string
+) => http.put<Product>(`${RESOURCE}/discount/${productId}`, { discount });
 
 export const deleteProduct = (productId: Identifier) =>
   http.delete(`${RESOURCE}/${productId}`);
