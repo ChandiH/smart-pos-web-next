@@ -24,5 +24,5 @@ export * from "./spinner";
 export * from "./table";
 export * from "./tabs";
 export * from "./textarea";
-export * from "./theme-toggle-button";
+export * from "./theme-toggle";
 export * from "./tooltip";

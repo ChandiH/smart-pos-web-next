@@ -8,7 +8,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   NavigationMenu,
   NavigationMenuContent,
@@ -17,6 +16,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
+  ThemeToggle,
 } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -455,6 +455,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
             {currentUser && (
               <UserMenu user={currentUser} handleLogout={handleLogout} />
             )}
+            <ThemeToggle />
           </div>
         </div>
       </header>

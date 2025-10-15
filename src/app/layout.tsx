@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { Providers } from "@/components/providers/Providers";
 import { Toaster } from "@/components/ui";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-instrument-sans",
@@ -32,12 +33,19 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${instrumentSans.variable} ${robotoMono.variable} ${instrumentSans.className} antialiased dark`}
+        className={`${instrumentSans.variable} ${robotoMono.variable} ${instrumentSans.className}`}
       >
-        <Providers>
-          {children}
-          <Toaster richColors />
-        </Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Providers>
+            {children}
+            <Toaster richColors />
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );
