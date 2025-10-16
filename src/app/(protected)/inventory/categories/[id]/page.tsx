@@ -1,5 +1,5 @@
-import Categories from "@/components/screens/inventory/Categories";
 import React from "react";
+import Categories from "@/components/screens/inventory/Categories";
 
 export default function Page() {
   return (

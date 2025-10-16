@@ -1,3 +1,4 @@
+import React from "react";
 import EmployeeWorkingHour from "@/components/screens/employee/EmployeeWorkingHour";
 
 export default function Page() {

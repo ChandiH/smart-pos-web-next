@@ -1,5 +1,5 @@
-import Suppliers from "@/components/screens/supplier/Suppliers";
 import React from "react";
+import Suppliers from "@/components/screens/supplier/Suppliers";
 
 export default function Page() {
   return (

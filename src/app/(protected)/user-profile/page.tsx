@@ -1,5 +1,5 @@
-import UserProfile from "@/components/screens/user/UserProfile";
 import React from "react";
+import UserProfile from "@/components/screens/user/UserProfile";
 
 export default function Page() {
   return (

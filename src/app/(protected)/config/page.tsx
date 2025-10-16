@@ -1,3 +1,4 @@
+import React from "react";
 import ConfigScreen from "@/components/screens/ConfigScreen";
 
 export default function Page() {

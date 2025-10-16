@@ -1,5 +1,5 @@
-import CustomerForm from "@/components/screens/customer/CustomerForm";
 import React from "react";
+import CustomerForm from "@/components/screens/customer/CustomerForm";
 
 export default function Page() {
   return (

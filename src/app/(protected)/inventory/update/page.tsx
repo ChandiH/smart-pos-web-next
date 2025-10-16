@@ -1,5 +1,5 @@
-import UpdateInventory from "@/components/screens/inventory/UpdateInventory";
 import React from "react";
+import UpdateInventory from "@/components/screens/inventory/UpdateInventory";
 
 export default function Page() {
   return (

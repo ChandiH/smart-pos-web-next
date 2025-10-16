@@ -1,5 +1,5 @@
-import Customers from "@/components/screens/customer/Customers";
 import React from "react";
+import Customers from "@/components/screens/customer/Customers";
 
 export default function Page() {
   return (

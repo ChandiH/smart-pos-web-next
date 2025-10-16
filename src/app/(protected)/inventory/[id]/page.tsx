@@ -1,5 +1,5 @@
-import ProductForm from "@/components/screens/inventory/ProductForm";
 import React from "react";
+import ProductForm from "@/components/screens/inventory/ProductForm";
 
 export default function Page() {
   return (

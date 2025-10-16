@@ -1,5 +1,5 @@
-import StockUpdateForm from "@/components/screens/inventory/StockUpdateForm";
 import React from "react";
+import StockUpdateForm from "@/components/screens/inventory/StockUpdateForm";
 
 export default function Page() {
   return (

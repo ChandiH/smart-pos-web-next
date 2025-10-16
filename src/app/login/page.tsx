@@ -1,3 +1,4 @@
+import React from "react";
 import LoginForm from "@/components/screens/login";
 
 export default function Page() {

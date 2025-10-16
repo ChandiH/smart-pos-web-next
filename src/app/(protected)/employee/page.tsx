@@ -1,3 +1,4 @@
+import React from "react";
 import EmployeeList from "@/components/screens/employee/EmployeeList";
 
 export default function Page() {

@@ -1,5 +1,5 @@
-import SupplierForm from "@/components/screens/supplier/SupplierForm";
 import React from "react";
+import SupplierForm from "@/components/screens/supplier/SupplierForm";
 
 export default function Page() {
   return (

@@ -1,5 +1,5 @@
-import BranchForm from "@/components/screens/branch/BranchForm";
 import React from "react";
+import BranchForm from "@/components/screens/branch/BranchForm";
 
 export default function Page() {
   return (

@@ -1,5 +1,5 @@
-import BranchDetails from "@/components/screens/branch/BranchDetails";
 import React from "react";
+import BranchDetails from "@/components/screens/branch/BranchDetails";
 
 export default function Page() {
   return (

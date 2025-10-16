@@ -1,3 +1,4 @@
+import React from "react";
 import EmployeeProfile from "@/components/screens/employee/EmployeeProfile";
 
 export default function Page() {

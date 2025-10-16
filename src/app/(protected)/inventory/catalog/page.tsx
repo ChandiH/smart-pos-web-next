@@ -1,5 +1,5 @@
-import ProductCatalog from "@/components/screens/inventory/ProductCatalog";
 import React from "react";
+import ProductCatalog from "@/components/screens/inventory/ProductCatalog";
 
 export default function Page() {
   return (

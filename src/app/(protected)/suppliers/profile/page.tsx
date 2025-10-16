@@ -1,5 +1,5 @@
-import SupplierProfile from "@/components/screens/supplier/SupplierProfile";
 import React from "react";
+import SupplierProfile from "@/components/screens/supplier/SupplierProfile";
 
 export default function Page() {
   return (

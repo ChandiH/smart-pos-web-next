@@ -1,3 +1,4 @@
+import React from "react";
 import EmployeeForm from "@/components/screens/employee/EmployeeForm";
 
 export default function Page() {

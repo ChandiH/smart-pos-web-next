@@ -1,5 +1,5 @@
-import CashierSalePage from "@/components/screens/sale/cashierSalePage";
 import React from "react";
+import CashierSalePage from "@/components/screens/sale/cashierSalePage";
 
 export default function Page() {
   return (
