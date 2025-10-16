@@ -94,7 +94,7 @@ const EmployeeWorkingHour = () => {
               (record) => record.employee_id === employee.employee_id
             )
         )
-        .filter((employee) => employee.role_id !== 1)
+        .filter((employee) => employee.role_id !== 1) // Exclude owner role
         .map((employee) => mapToShiftRecord(employee));
 
       setMarkedEmployees(markedRecords);
@@ -410,7 +410,7 @@ const EmployeeWorkingHour = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  markedEmployees.map((item) => (
+                  markedEmployees.map((item: WorkingHourRecord) => (
                     <TableRow key={`${item.employee_id}-${item.date}`}>
                       <TableCell>{item.employee_id}</TableCell>
                       <TableCell className="font-medium">

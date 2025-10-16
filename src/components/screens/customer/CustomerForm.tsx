@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 
-import AccessFrame from "@/components/accessFrame";
 import { Button } from "@/components/ui/button";
 import {
   Card,

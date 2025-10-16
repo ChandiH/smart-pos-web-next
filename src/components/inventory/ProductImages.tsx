@@ -8,7 +8,7 @@ type ProductImagesProps = {
   images?: string[] | string | null;
 };
 
-const ProductImages = ({ images }: ProductImagesProps): JSX.Element | null => {
+const ProductImages = ({ images }: ProductImagesProps) => {
   if (!images) return null;
 
   const imageList = Array.isArray(images) ? images : [images];

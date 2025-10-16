@@ -8,7 +8,6 @@ import {
   LifeBuoyIcon,
   Network,
   Store,
-  Truck,
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,10 +28,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { CLIENT_BRANDING } from "@/config/env";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
-import { UserCredentials } from "@/context/UserContext";
 import moment from "moment";
 
 // Simple logo component for the navbar
@@ -201,13 +198,7 @@ const defaultNavigationLinks: NavbarNavItem[] = [
 ];
 
 // User Menu Component
-const UserMenu = ({
-  user,
-  handleLogout,
-}: {
-  user: UserCredentials;
-  handleLogout: () => void;
-}) => {
+const UserMenu = ({ handleLogout }: { handleLogout: () => void }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -492,9 +483,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
               <span className="text-xs">Welcome,</span>
               <span className="text-lg">{currentUser?.employee_name}</span>
             </div>
-            {currentUser && (
-              <UserMenu user={currentUser} handleLogout={handleLogout} />
-            )}
+            {currentUser && <UserMenu handleLogout={handleLogout} />}
             <ThemeToggle />
           </div>
         </div>

@@ -139,8 +139,8 @@ export const SaleHistoryToday = ({
         const payload = Array.isArray(data)
           ? data
           : Array.isArray((data as { data?: unknown })?.data)
-            ? ((data as { data?: unknown }).data as unknown[])
-            : [];
+          ? ((data as { data?: unknown }).data as unknown[])
+          : [];
 
         if (!ignore) {
           setData(payload as SaleRecord[]);
@@ -216,7 +216,7 @@ export const SaleHistoryToday = ({
   if (branchId === null || branchId === undefined) {
     return (
       <div className="flex min-h-[200px] items-center justify-center rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-        Select a branch to review today's sales activity.
+        Select a branch to review today&apos;s sales activity.
       </div>
     );
   }

@@ -44,7 +44,7 @@ export function LoginForm({
 
     if (lastVisitedPage) return router.replace(lastVisitedPage);
     router.replace("/dashboard");
-  }, []);
+  }, [router, setCurrentUser]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

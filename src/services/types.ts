@@ -48,22 +48,24 @@ export interface Employee {
   employee_id?: Identifier;
   employee_name?: string;
   role_id?: Identifier;
+  role_name?: string;
   branch_id?: Identifier;
   employee_email?: string;
-  employee_contact?: string;
+  employee_phone?: string;
   [key: string]: unknown;
 }
 
 export interface WorkingHourRecord {
-  record_id?: Identifier;
-  employee_id: Identifier;
-  branch_id?: Identifier;
   date: string;
+  employee_id: Identifier;
+  employee_name?: string;
+  present?: boolean;
+  record_id?: Identifier;
+  role_name?: string;
   shift_on?: string;
   shift_off?: string;
   total_hours?: number;
-  present?: boolean;
-  [key: string]: unknown;
+  updated_by?: Identifier;
 }
 
 export interface RewardsPointsSetting {

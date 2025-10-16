@@ -12,10 +12,7 @@ import { TopSellingBranch } from "@/components/charts/top-selling-branch";
 import { TopSellingProducts } from "@/components/charts/top-selling-products";
 import UserContext from "@/context/UserContext";
 import { getAllBranches } from "@/services/branchService";
-import {
-  getMonthlySummary,
-  getThreeMonths,
-} from "@/services/reportService";
+import { getMonthlySummary, getThreeMonths } from "@/services/reportService";
 import type { Branch } from "@/services/types";
 import {
   Select,
@@ -67,15 +64,19 @@ export const Dashboard = () => {
   const [selectedBranch, setSelectedBranch] = React.useState<string>("");
 
   const [monthOptions, setMonthOptions] = React.useState<MonthOption[]>([]);
-  const [selectedMonth, setSelectedMonth] =
-    React.useState<string>(getCurrentMonthValue());
+  const [selectedMonth, setSelectedMonth] = React.useState<string>(
+    getCurrentMonthValue()
+  );
 
   const [summary, setSummary] = React.useState<MonthlySummaryRecord | null>(
     null
   );
 
   React.useEffect(() => {
-    if (currentUser?.branch_id !== undefined && currentUser?.branch_id !== null) {
+    if (
+      currentUser?.branch_id !== undefined &&
+      currentUser?.branch_id !== null
+    ) {
       setSelectedBranch(String(currentUser.branch_id));
     }
   }, [currentUser?.branch_id]);
@@ -118,10 +119,8 @@ export const Dashboard = () => {
         const summaryPayload = Array.isArray(summaryResponse.data)
           ? summaryResponse.data[0]
           : Array.isArray((summaryResponse.data as { data?: unknown })?.data)
-            ? (
-                (summaryResponse.data as { data?: unknown }).data as unknown[]
-              )[0]
-            : summaryResponse.data;
+          ? ((summaryResponse.data as { data?: unknown }).data as unknown[])[0]
+          : summaryResponse.data;
 
         if (summaryPayload && typeof summaryPayload === "object") {
           setSummary(summaryPayload as MonthlySummaryRecord);
@@ -131,8 +130,8 @@ export const Dashboard = () => {
         const monthPayload = Array.isArray(monthsResponse.data)
           ? monthsResponse.data
           : Array.isArray((monthsResponse.data as { data?: unknown })?.data)
-            ? (monthsResponse.data as { data?: unknown }).data
-            : [];
+          ? (monthsResponse.data as { data?: unknown }).data
+          : [];
 
         const options = (monthPayload as Array<Record<string, unknown>>)
           .map((item) => {
@@ -166,17 +165,14 @@ export const Dashboard = () => {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [selectedBranch, selectedMonth]);
 
   const grossSale = parseNumber(summary?.net_sale);
   const grossProfit = parseNumber(summary?.gross_profit);
   const totalOrders = parseNumber(summary?.total_orders);
 
   return (
-    <AccessFrame
-      accessLevel="report"
-      onDenied={() => router.replace("/sale")}
-    >
+    <AccessFrame accessLevel="report" onDenied={() => router.replace("/sale")}>
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DashboardTile
