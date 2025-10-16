@@ -22,10 +22,12 @@ type SortColumn = {
 };
 
 type Product = {
-  product_id: string | number;
+  product_id: string;
   product_name: string;
   quantity: number;
   retail_price: number;
+  buying_price: number;
+  discount: number;
   product_barcode?: string;
   [key: string]: unknown;
 };

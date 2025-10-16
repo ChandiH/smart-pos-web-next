@@ -337,10 +337,7 @@ const SupplierProfile = () => {
                         <TableCell className="font-medium">
                           {product.product_name ?? "Unnamed"}
                         </TableCell>
-                        <TableCell>
-                          {(product as Record<string, unknown>).category_name ??
-                            "—"}
-                        </TableCell>
+                        <TableCell>{product.category_name ?? "—"}</TableCell>
                         <TableCell>
                           Rs. {Number(product.buying_price ?? 0).toFixed(2)}
                         </TableCell>

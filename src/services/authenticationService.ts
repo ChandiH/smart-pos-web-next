@@ -5,6 +5,10 @@ import { UserCredentials } from "@/context/UserContext";
 
 const RESOURCE = "/auth";
 
+type AuthenticateResponse = {
+  token: string;
+};
+
 // if user is authenticated, return user object
 export function authenticate({
   username,
@@ -13,7 +17,10 @@ export function authenticate({
   username: string;
   password: string;
 }) {
-  return http.post(`${RESOURCE}/login`, { username, password });
+  return http.post<AuthenticateResponse>(`${RESOURCE}/login`, {
+    username,
+    password,
+  });
 }
 
 type RegisterEmployeePayload = {

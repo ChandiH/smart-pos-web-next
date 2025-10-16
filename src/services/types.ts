@@ -15,6 +15,7 @@ export interface Product {
   product_name: string;
   product_desc?: string;
   category_id?: Identifier;
+  category_name?: string;
   supplier_id?: Identifier;
   retail_price: number;
   buying_price?: number;

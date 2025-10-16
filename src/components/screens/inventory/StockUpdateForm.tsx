@@ -22,10 +22,7 @@ import {
   getInventoryByProduct,
   updateInventory,
 } from "@/services/inventoryService";
-import {
-  updateProductDiscount,
-  type Product as ProductResponse,
-} from "@/services/productService";
+import { updateProductDiscount } from "@/services/productService";
 import type {
   Branch,
   Identifier,
@@ -258,7 +255,7 @@ const StockUpdateForm = () => {
   }
 
   const productDescription =
-    (product as ProductResponse).product_desc ??
+    (product as Product).product_desc ??
     (product as Record<string, string>)["product_desc"];
 
   return (

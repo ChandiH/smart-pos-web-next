@@ -50,13 +50,13 @@ export function LoginForm({
     e.preventDefault();
     try {
       setLoading(true);
-      const { data: response } = await authenticate(state);
-      localStorage.setItem("token", response.token);
-      if (response.error) throw new Error(response.data.error);
-      setState((prevState) => ({
-        ...prevState,
-        setUser: decodeJWT(response.token),
-      }));
+      setState((prevState) => ({ ...prevState, error: "" }));
+      const { data } = await authenticate({
+        username: state.username,
+        password: state.password,
+      });
+      localStorage.setItem("token", data.token);
+      setCurrentUser(decodeJWT(data.token));
       router.replace("/dashboard");
     } catch (err) {
       console.log("Error Occured", err);

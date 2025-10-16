@@ -253,10 +253,7 @@ const UserProfile = () => {
                       <Input
                         value={String(value ?? "")}
                         onChange={(event) =>
-                          handleInputChange(
-                            key,
-                            event.target.value as UserCredentials[typeof key]
-                          )
+                          handleInputChange(key, String(event.target.value))
                         }
                         placeholder={placeholder}
                         type={type}

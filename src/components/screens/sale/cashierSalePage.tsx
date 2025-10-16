@@ -371,8 +371,7 @@ const CashierSalePage = () => {
       });
 
       Toast.promise(promise, {
-        success: (response) =>
-          response.data?.success ? response.data.success : "Order placed",
+        success: "Order placed",
         error: (error) =>
           error.response?.data?.error ?? "Failed to place order",
       });

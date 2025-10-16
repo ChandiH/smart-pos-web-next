@@ -190,7 +190,7 @@ const Suppliers = () => {
     ...keys: (keyof SupplierRecord | string)[]
   ) => {
     for (const key of keys) {
-      const value = (supplier as Record<string, unknown>)[key];
+      const value = supplier[key];
       if (value !== undefined && value !== null && value !== "") {
         return value;
       }
@@ -267,9 +267,7 @@ const Suppliers = () => {
                     className="cursor-pointer hover:bg-muted/60"
                     onClick={() => handleSelect(supplier)}
                   >
-                    <TableCell>
-                      {getSupplierField(supplier, "supplier_id", "id") ?? "—"}
-                    </TableCell>
+                    <TableCell>{supplier.supplier_id ?? "—"}</TableCell>
                     <TableCell className="font-medium">
                       {String(
                         getSupplierField(

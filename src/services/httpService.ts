@@ -35,7 +35,8 @@ const http = {
     url: string,
     data?: D,
     config?: AxiosRequestConfig<D>
-  ): Promise<AxiosResponse<T>> => apiClient.post<T>(url, data, config),
+  ): Promise<AxiosResponse<T>> =>
+    apiClient.post<T>(url, data, config),
 
   put: <T = unknown, D = unknown>(
     url: string,
