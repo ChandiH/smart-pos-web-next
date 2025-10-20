@@ -7,6 +7,8 @@ import {
   useMemo,
   useRef,
   useState,
+  Dispatch,
+  SetStateAction,
 } from "react";
 import { useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
@@ -121,7 +123,7 @@ const CashierSalePage = () => {
   const { currentUser } = useContext(UserContext);
   const { cart, setCart } = useContext(CartContext) as {
     cart: Product[];
-    setCart: (items: Product[]) => void;
+    setCart: Dispatch<SetStateAction<Product[]>>;
   };
 
   const [sortColumn, setSortColumn] = useState<SortColumn>({
@@ -318,7 +320,7 @@ const CashierSalePage = () => {
 
   const onAddToCart = (product: Product) => {
     setProductSearchQuery("");
-    setCart((prevCart) => {
+    setCart((prevCart: Product[]) => {
       const cartCopy = [...prevCart];
       const existingProductIndex = cartCopy.findIndex(
         (item) => item.product_id === product.product_id
