@@ -29,6 +29,7 @@ import { getProducts } from "@/services/productService";
 import { getImageUrl } from "@/services/imageHandler";
 import type { InventoryItem, Product } from "@/services/types";
 import { Toast } from "@/components/ui";
+import useBarcodeScanner from "@/hooks/useBarcodeScanner";
 
 type SortDirection = "asc" | "desc";
 
@@ -125,6 +126,26 @@ const UpdateInventory = () => {
     void fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId]);
+
+  useBarcodeScanner<InventoryProduct>({
+    enabled: products.length > 0,
+    items: products,
+    getBarcode: (item) => {
+      const raw = item.product_barcode;
+      if (!raw) return undefined;
+      return typeof raw === "number" ? String(raw) : raw.trim();
+    },
+    onScanSuccess: (_, scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setShowLowStock(false);
+      setSearchQuery(normalizedBarcode);
+    },
+    onScanFailure: (scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setSearchQuery(normalizedBarcode);
+      Toast.error("No product matches the scanned barcode.");
+    },
+  });
 
   useEffect(() => {
     setCurrentPage(1);

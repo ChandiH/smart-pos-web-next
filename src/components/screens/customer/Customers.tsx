@@ -25,6 +25,7 @@ import {
 import { getCustomers } from "@/services/customerService";
 import type { Customer } from "@/services/types";
 import { Toast } from "@/components/ui";
+import useBarcodeScanner from "@/hooks/useBarcodeScanner";
 
 type SortDirection = "asc" | "desc";
 
@@ -70,6 +71,28 @@ const Customers = () => {
     void fetchCustomers();
   }, []);
 
+  useBarcodeScanner<CustomerRow>({
+    enabled: customers.length > 0,
+    items: customers,
+    getBarcode: (item) => {
+      const raw =
+        item.customer_contact ?? item.customer_phone ?? item.customer_id;
+      if (raw === undefined || raw === null) return undefined;
+      if (typeof raw === "number") return String(raw);
+      if (typeof raw === "string") return raw.trim();
+      return undefined;
+    },
+    onScanSuccess: (_, scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setSearchQuery(normalizedBarcode);
+    },
+    onScanFailure: (scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setSearchQuery(normalizedBarcode);
+      Toast.error("No customer matches the scanned barcode.");
+    },
+  });
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
@@ -83,7 +106,11 @@ const Customers = () => {
         ?.toString()
         .toLowerCase()
         .includes(query);
-      return Boolean(matchesName || matchesPhone);
+      const matchesContact = customer.customer_contact
+        ?.toString()
+        .toLowerCase()
+        .includes(query);
+      return Boolean(matchesName || matchesPhone || matchesContact);
     });
   }, [customers, searchQuery]);
 

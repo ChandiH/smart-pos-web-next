@@ -25,6 +25,7 @@ import {
 } from "@/services/productService";
 import type { Product } from "@/services/types";
 import { Toast } from "@/components/ui";
+import useBarcodeScanner from "@/hooks/useBarcodeScanner";
 
 type SortDirection = "asc" | "desc";
 
@@ -69,6 +70,25 @@ const ProductCatalog = () => {
   useEffect(() => {
     void fetchProducts();
   }, []);
+
+  useBarcodeScanner<CatalogProduct>({
+    enabled: products.length > 0,
+    items: products,
+    getBarcode: (item) => {
+      const raw = item.product_barcode;
+      if (!raw) return undefined;
+      return typeof raw === "number" ? String(raw) : raw.trim();
+    },
+    onScanSuccess: (_, scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setSearchQuery(normalizedBarcode);
+    },
+    onScanFailure: (scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setSearchQuery(normalizedBarcode);
+      Toast.error("No product matches the scanned barcode.");
+    },
+  });
 
   useEffect(() => {
     setCurrentPage(1);

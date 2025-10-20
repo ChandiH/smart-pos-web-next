@@ -81,8 +81,8 @@ export const TopSellingBranch = ({
         const payload = Array.isArray(data)
           ? data
           : Array.isArray((data as { data?: unknown })?.data)
-            ? ((data as { data?: unknown }).data as unknown[])
-            : [];
+          ? ((data as { data?: unknown }).data as unknown[])
+          : [];
 
         const transformed = (payload as BranchSalesRecord[]).map((item) => ({
           branch: item.branch_name ?? "Unknown",

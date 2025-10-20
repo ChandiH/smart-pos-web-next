@@ -76,8 +76,8 @@ export const TopSellingProducts = ({
         const payload = Array.isArray(data)
           ? data
           : Array.isArray((data as { data?: unknown })?.data)
-            ? ((data as { data?: unknown }).data as unknown[])
-            : [];
+          ? ((data as { data?: unknown }).data as unknown[])
+          : [];
 
         const transformed = (payload as ProductSalesRecord[]).map((item) => ({
           product: item.product_name ?? "Unknown",

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
 
@@ -29,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Toast } from "@/components/ui";
+import useBarcodeScanner from "@/hooks/useBarcodeScanner";
 
 type SortOrder = "asc" | "desc";
 
@@ -133,10 +141,13 @@ const CashierSalePage = () => {
   const [customer, setCustomer] = useState<Customer>({ ...guestCustomer });
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [isCustomerSearchFocused, setCustomerSearchFocused] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [paymentDetails, setPaymentDetails] = useState("");
   const [rewardsPointsPercentage, setRewardsPointsPercentage] = useState(0);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+
+  const customerSearchInputRef = useRef<HTMLInputElement | null>(null);
 
   const typedUser = (currentUser as CashierUser | null) ?? null;
   const branchId = typedUser?.branch_id;
@@ -211,6 +222,65 @@ const CashierSalePage = () => {
     void loadData();
   }, [loadData]);
 
+  useBarcodeScanner<Customer>({
+    enabled: isCustomerSearchFocused && customers.length > 0,
+    items: customers,
+    getBarcode: (item) => {
+      const rawValue =
+        item.customer_contact ?? item.customer_phone ?? item.customer_id;
+      if (rawValue === undefined || rawValue === null) {
+        return undefined;
+      }
+      if (typeof rawValue === "number") {
+        return String(rawValue);
+      }
+      if (typeof rawValue === "string") {
+        return rawValue.trim();
+      }
+      return undefined;
+    },
+    onScanSuccess: (matchedCustomer, scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      const displayValue =
+        matchedCustomer.customer_name?.trim() || normalizedBarcode;
+      setCustomerSearchQuery(displayValue);
+      setCustomer(matchedCustomer);
+      customerSearchInputRef.current?.blur();
+    },
+    onScanFailure: (scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setCustomerSearchQuery(normalizedBarcode);
+      setCustomer({ ...guestCustomer });
+      Toast.error("No customer matches the scanned barcode.");
+    },
+  });
+
+  useBarcodeScanner<Product>({
+    enabled: !isCustomerSearchFocused && products.length > 0,
+    items: products,
+    getBarcode: (item) => {
+      const rawValue = item.product_barcode;
+      if (rawValue === undefined || rawValue === null) {
+        return undefined;
+      }
+      if (typeof rawValue === "number") {
+        return String(rawValue);
+      }
+      if (typeof rawValue === "string") {
+        return rawValue.trim();
+      }
+      return undefined;
+    },
+    onScanSuccess: (matchedProduct) => {
+      onAddToCart(matchedProduct);
+    },
+    onScanFailure: (scannedBarcode) => {
+      const normalizedBarcode = scannedBarcode.trim();
+      setProductSearchQuery(normalizedBarcode);
+      Toast.error("No product matches the scanned barcode.");
+    },
+  });
+
   const handleSort = (column: SortColumn) => {
     setSortColumn(column);
   };
@@ -226,35 +296,46 @@ const CashierSalePage = () => {
       return;
     }
 
-    const filteredCustomer = customers.find(
-      (item) =>
-        item.customer_name
-          ?.toLowerCase()
-          .startsWith(query.trim().toLowerCase()) ||
-        item.customer_phone === query.trim()
-    );
+    const normalizedQuery = query.trim();
+    const lowerQuery = normalizedQuery.toLowerCase();
+
+    const filteredCustomer = customers.find((item) => {
+      const matchesName = item.customer_name
+        ?.toLowerCase()
+        .startsWith(lowerQuery);
+      const matchesPhone =
+        item.customer_phone &&
+        String(item.customer_phone).trim() === normalizedQuery;
+      const matchesContact =
+        item.customer_contact &&
+        String(item.customer_contact).trim() === normalizedQuery;
+
+      return Boolean(matchesName || matchesPhone || matchesContact);
+    });
 
     setCustomer(filteredCustomer ?? { ...guestCustomer });
   };
 
   const onAddToCart = (product: Product) => {
     setProductSearchQuery("");
-    const cartCopy = [...cart];
-    const existingProduct = cartCopy.find(
-      (item) => item.product_id === product.product_id
-    );
+    setCart((prevCart) => {
+      const cartCopy = [...prevCart];
+      const existingProductIndex = cartCopy.findIndex(
+        (item) => item.product_id === product.product_id
+      );
 
-    if (existingProduct) {
-      const index = cartCopy.indexOf(existingProduct);
-      cartCopy[index] = {
-        ...existingProduct,
-        quantity: existingProduct.quantity + 1,
-      };
-    } else {
+      if (existingProductIndex !== -1) {
+        const existingProduct = cartCopy[existingProductIndex];
+        cartCopy[existingProductIndex] = {
+          ...existingProduct,
+          quantity: (existingProduct.quantity ?? 0) + 1,
+        };
+        return cartCopy;
+      }
+
       cartCopy.push({ ...product, quantity: 1 });
-    }
-
-    setCart(cartCopy);
+      return cartCopy;
+    });
   };
 
   const totals = useMemo(() => {
@@ -402,8 +483,8 @@ const CashierSalePage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <div className="space-y-6">
+      <div className="flex flex-row gap-6 xl:grid-cols-[2fr_1fr]">
+        <div className="flex-4 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold">Add Items</CardTitle>
@@ -447,7 +528,7 @@ const CashierSalePage = () => {
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="flex-1 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold">
@@ -464,8 +545,11 @@ const CashierSalePage = () => {
                 </Label>
                 <Input
                   id="customer-search"
+                  ref={customerSearchInputRef}
                   value={customerSearchQuery}
                   onChange={(event) => handleCustomerSearch(event.target.value)}
+                  onFocus={() => setCustomerSearchFocused(true)}
+                  onBlur={() => setCustomerSearchFocused(false)}
                   placeholder="Search customers (name or contact)"
                 />
               </div>
