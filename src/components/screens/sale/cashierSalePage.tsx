@@ -39,6 +39,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Toast } from "@/components/ui";
 import useBarcodeScanner from "@/hooks/useBarcodeScanner";
+import ReceiptPrinter, {
+  ReceiptBill,
+  ReceiptPrinterHandle,
+} from "@/components/print/ReceiptPrinter";
 
 type SortOrder = "asc" | "desc";
 
@@ -150,6 +154,7 @@ const CashierSalePage = () => {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   const customerSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const receiptPrinterRef = useRef<ReceiptPrinterHandle | null>(null);
 
   const typedUser = (currentUser as CashierUser | null) ?? null;
   const branchId = typedUser?.branch_id;
@@ -483,6 +488,77 @@ const CashierSalePage = () => {
 
   const paymentInputType = isCashPayment ? "number" : "text";
 
+  const receiptData = useMemo<ReceiptBill | null>(() => {
+    if (cart.length === 0) {
+      return null;
+    }
+
+    const items = cart
+      .map((product) => {
+        const quantity = Number(product.quantity ?? 0);
+        if (quantity <= 0) {
+          return null;
+        }
+        const unitPrice = Number(product.retail_price ?? 0);
+        const discountPerUnit = Number(product.discount ?? 0);
+        const discountedPrice = Math.max(unitPrice - discountPerUnit, 0);
+
+        return {
+          name: product.product_name ?? "Unnamed Product",
+          qty: quantity,
+          price: unitPrice,
+          discountedPrice,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (items.length === 0) {
+      return null;
+    }
+
+    const isGuestCustomer =
+      customer.customer_name === guestCustomer.customer_name;
+
+    const cashReceived = isCashPayment
+      ? Math.max(parsedPaymentDetails, 0)
+      : undefined;
+
+    const branchLabel =
+      typedUser?.branch_id !== undefined && typedUser.branch_id !== null
+        ? `Branch ${typedUser.branch_id}`
+        : undefined;
+
+    return {
+      shopName: branchLabel ?? "Smart POS",
+      address: undefined,
+      phone: undefined,
+      customer: customer.customer_name,
+      loyaltyPoints: isGuestCustomer
+        ? undefined
+        : Number(customer.rewards_points ?? 0),
+      loyaltyEarned: rewardsPoints > 0 ? rewardsPoints : undefined,
+      credit: undefined,
+      invoiceNo: undefined,
+      date: new Date().toLocaleString(),
+      items,
+      discount: 0,
+      cash: cashReceived,
+      paymentMethod,
+      reference: !isCashPayment && paymentDetails ? paymentDetails : undefined,
+      footer: "Thank you for shopping with us!",
+    };
+  }, [
+    cart,
+    customer.customer_name,
+    customer.rewards_points,
+    isCashPayment,
+    parsedPaymentDetails,
+    paymentDetails,
+    paymentMethod,
+    rewardsPoints,
+    typedUser?.branch_id,
+  ]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-row gap-6 xl:grid-cols-[2fr_1fr]">
@@ -747,7 +823,11 @@ const CashierSalePage = () => {
                     <Button
                       type="button"
                       variant="secondary"
-                      disabled={isChangeNegative}
+                      disabled={isChangeNegative || !receiptData}
+                      onClick={() => {
+                        if (!receiptData) return;
+                        receiptPrinterRef.current?.print();
+                      }}
                     >
                       Print Receipt
                     </Button>
@@ -765,6 +845,7 @@ const CashierSalePage = () => {
           </Card>
         </div>
       </div>
+      <ReceiptPrinter ref={receiptPrinterRef} bill={receiptData} />
     </div>
   );
 };
