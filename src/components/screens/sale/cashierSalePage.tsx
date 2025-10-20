@@ -250,12 +250,19 @@ const CashierSalePage = () => {
       const normalizedBarcode = scannedBarcode.trim();
       const displayValue =
         matchedCustomer.customer_name?.trim() || normalizedBarcode;
+      console.log("[BarcodeScanner][Customer] Match", {
+        barcode: normalizedBarcode,
+        customerId: matchedCustomer.customer_id,
+      });
       setCustomerSearchQuery(displayValue);
       setCustomer(matchedCustomer);
       customerSearchInputRef.current?.blur();
     },
     onScanFailure: (scannedBarcode) => {
       const normalizedBarcode = scannedBarcode.trim();
+      console.log("[BarcodeScanner][Customer] No match", {
+        barcode: normalizedBarcode,
+      });
       setCustomerSearchQuery(normalizedBarcode);
       setCustomer({ ...guestCustomer });
       Toast.error("No customer matches the scanned barcode.");
@@ -279,10 +286,17 @@ const CashierSalePage = () => {
       return undefined;
     },
     onScanSuccess: (matchedProduct) => {
+      console.log("[BarcodeScanner][Product] Match", {
+        barcode: matchedProduct.product_barcode,
+        productId: matchedProduct.product_id,
+      });
       onAddToCart(matchedProduct);
     },
     onScanFailure: (scannedBarcode) => {
       const normalizedBarcode = scannedBarcode.trim();
+      console.log("[BarcodeScanner][Product] No match", {
+        barcode: normalizedBarcode,
+      });
       setProductSearchQuery(normalizedBarcode);
       Toast.error("No product matches the scanned barcode.");
     },
