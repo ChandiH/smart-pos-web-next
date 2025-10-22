@@ -196,9 +196,7 @@ export interface SaleWithRelations {
 }
 
 /** A product row with stock by branch, for inventory tables */
-export interface ProductWithInventory {
-  product: Product;
-  inventory: Array<Pick<Inventory, "branch_id" | "quantity" | "updated_on">>;
-  category?: Pick<Category, "category_id" | "category_name">;
-  supplier?: Pick<Supplier, "supplier_id" | "supplier_name">;
-}
+export type ProductWithInventory = Product & {
+  inventory: Inventory[];
+  category?: Category;
+};

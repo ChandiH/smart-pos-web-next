@@ -7,41 +7,21 @@ import { Loader2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import ProductImages from "@/components/inventory/ProductImages";
 import UserContext from "@/context/UserContext";
 import { getAllBranches } from "@/services/branchService";
-import {
-  getInventoryByProduct,
-  updateInventory,
-} from "@/services/inventoryService";
+import { getInventoryByProduct, updateInventory } from "@/services/inventoryService";
 import { updateProductDiscount } from "@/services/productService";
-import type {
-  Branch,
-  Identifier,
-  InventoryItem,
-  Product,
-} from "@/services/types";
+import type { Branch, Identifier } from "@/services/types";
 import { Toast } from "@/components/ui";
+import { ProductWithInventory, Inventory } from "@/types/prisma-types";
 
 type ExtendedUser = {
   branch_id?: Identifier;
   branch_name?: string;
   employee_id?: Identifier;
   [key: string]: unknown;
-};
-
-type InventoryProduct = Product & {
-  quantity: number;
-  updated_on?: string;
-  reorder_level?: number;
 };
 
 type BranchStock = {
@@ -58,7 +38,7 @@ const StockUpdateForm = () => {
   const { currentUser } = useContext(UserContext);
   const user = (currentUser as ExtendedUser | null) ?? {};
 
-  const [product, setProduct] = useState<InventoryProduct | null>(null);
+  const [product, setProduct] = useState<ProductWithInventory | null>(null);
   const [otherBranches, setOtherBranches] = useState<BranchStock[]>([]);
   const [quantity, setQuantity] = useState(0);
   const [reorderLevel, setReorderLevel] = useState<number>(0);
@@ -66,85 +46,38 @@ const StockUpdateForm = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
 
-  useEffect(() => {
-    const stored =
-      typeof window !== "undefined"
-        ? window.sessionStorage.getItem("inventoryProduct")
-        : null;
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as InventoryProduct;
-        setProduct(parsed);
-      } catch (error) {
-        console.warn("Failed to parse stored inventory product", error);
-      }
-    }
-  }, []);
-
   const fetchData = async () => {
     if (!productId || !user.branch_id) return;
 
     try {
       setIsLoading(true);
-      const [{ data: inventory }, { data: branches }] = await Promise.all([
+      const [{ data: productInventory }, { data: branches }] = await Promise.all([
         getInventoryByProduct(productId),
         getAllBranches(),
       ]);
 
-      const inventoryList: InventoryItem[] = Array.isArray(inventory)
-        ? (inventory as InventoryItem[])
+      setProduct(productInventory);
+
+      const inventoryList: Inventory[] = Array.isArray(productInventory.inventory)
+        ? (productInventory.inventory as Inventory[])
         : [];
 
-      const branchRecords: Branch[] = Array.isArray(branches)
-        ? (branches as Branch[])
-        : [];
+      const branchRecords: Branch[] = Array.isArray(branches) ? (branches as Branch[]) : [];
 
-      const currentBranchStock = inventoryList.find(
-        (item) => item.branch_id === user.branch_id
-      );
+      const currentBranchStock = inventoryList.find((item) => item.branch_id === user.branch_id);
 
-      let baseProduct: InventoryProduct | null = null;
-
-      if (inventoryList.length > 0) {
-        const first = inventoryList[0] as InventoryProduct;
-        baseProduct = {
-          ...first,
-          quantity: Number(currentBranchStock?.quantity ?? 0),
-          reorder_level: currentBranchStock?.reorder_level
-            ? Number(currentBranchStock.reorder_level)
-            : Number(first.reorder_level ?? 0),
-          updated_on: currentBranchStock?.updated_on
-            ? (currentBranchStock.updated_on as string).slice(0, 10)
-            : first.updated_on
-            ? (first.updated_on as string).slice(0, 10)
-            : "Never",
-        };
-      } else if (product) {
-        baseProduct = {
-          ...product,
-          quantity: Number(product.quantity ?? 0),
-          reorder_level: Number(product.reorder_level ?? 0),
-          updated_on: product.updated_on ?? "Never",
-        };
-      }
-
-      if (baseProduct) {
-        setProduct(baseProduct);
-        setReorderLevel(Number(baseProduct.reorder_level ?? 0));
-        setDiscount(Number(baseProduct.discount ?? 0));
+      if (currentBranchStock) {
+        setReorderLevel(Number(currentBranchStock.reorder_level ?? 0));
+        setDiscount(Number(productInventory.discount ?? 0));
       }
 
       const otherBranchStocks: BranchStock[] = branchRecords
         .filter((branch) => branch.branch_id !== user.branch_id)
         .map((branch) => {
-          const record = inventoryList.find(
-            (item) => item.branch_id === branch.branch_id
-          );
+          const record = inventoryList.find((item) => item.branch_id === branch.branch_id);
           return {
             branch_id: branch.branch_id ?? "",
-            branch_name:
-              branch.branch_name ??
-              (branch as Record<string, string>)["branch_city"],
+            branch_name: branch.branch_name ?? (branch as Record<string, string>)["branch_city"],
             quantity: Number(record?.quantity ?? 0),
           };
         });
@@ -180,7 +113,10 @@ const StockUpdateForm = () => {
 
   const updateInventoryQuantity = async () => {
     if (!productId || !user.branch_id || !product) return;
-    if (quantity === 0) {
+    if (
+      quantity === 0 &&
+      reorderLevel === Number(product.inventory.find((item) => item.branch_id === user.branch_id)?.reorder_level ?? 0)
+    ) {
       Toast.message("No quantity change to apply.");
       return;
     }
@@ -190,14 +126,13 @@ const StockUpdateForm = () => {
       const promise = updateInventory({
         branch_id: user.branch_id,
         product_id: productId,
-        quantity: Number(product.quantity ?? 0) + quantity,
+        quantity: Number(product.inventory.find((item) => item.branch_id === user.branch_id)?.quantity ?? 0) + quantity,
         reorder_level: reorderLevel,
       });
       Toast.promise(promise, {
         loading: "Updating inventory…",
         success: "Inventory updated successfully",
-        error: (error) =>
-          error?.response?.data?.error ?? "Failed to update inventory",
+        error: (error) => error?.response?.data?.error ?? "Failed to update inventory",
       });
       await promise;
       setQuantity(0);
@@ -213,15 +148,11 @@ const StockUpdateForm = () => {
     if (!productId) return;
     try {
       setIsMutating(true);
-      const promise = updateProductDiscount(
-        productId,
-        Number(discount).toFixed(2)
-      );
+      const promise = updateProductDiscount(productId, Number(discount).toFixed(2));
       Toast.promise(promise, {
         loading: "Updating discount…",
         success: "Discount updated",
-        error: (error) =>
-          error?.response?.data?.error ?? "Failed to update discount",
+        error: (error) => error?.response?.data?.error ?? "Failed to update discount",
       });
       await promise;
       await fetchData();
@@ -247,31 +178,21 @@ const StockUpdateForm = () => {
   }
 
   if (!product) {
-    return (
-      <div className="text-center text-muted-foreground">
-        Product details unavailable.
-      </div>
-    );
+    return <div className="text-center text-muted-foreground">Product details unavailable.</div>;
   }
 
-  const productDescription =
-    (product as Product).product_desc ??
-    (product as Record<string, string>)["product_desc"];
+  const productDescription = (product as ProductWithInventory).product_desc;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
       <Card className="h-full">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">
-            Product Images
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold">Product Images</CardTitle>
         </CardHeader>
         <CardContent>
           <ProductImages images={product.product_image as string[] | string} />
           <div className="mt-6 rounded-lg border">
-            <h3 className="px-4 py-3 text-sm font-semibold">
-              Stock in other branches
-            </h3>
+            <h3 className="px-4 py-3 text-sm font-semibold">Stock in other branches</h3>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -282,10 +203,7 @@ const StockUpdateForm = () => {
               <TableBody>
                 {otherBranches.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={2}
-                      className="py-6 text-center text-sm text-muted-foreground"
-                    >
+                    <TableCell colSpan={2} className="py-6 text-center text-sm text-muted-foreground">
                       No additional branches found.
                     </TableCell>
                   </TableRow>
@@ -293,9 +211,7 @@ const StockUpdateForm = () => {
                   otherBranches.map((branch) => (
                     <TableRow key={String(branch.branch_id)}>
                       <TableCell>{branch.branch_name ?? "Branch"}</TableCell>
-                      <TableCell className="text-right">
-                        {branch.quantity}
-                      </TableCell>
+                      <TableCell className="text-right">{branch.quantity}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -307,12 +223,8 @@ const StockUpdateForm = () => {
 
       <Card className="h-full">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">
-            {product.product_name ?? "Unnamed Product"}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {product.category_name ?? "No category"}
-          </p>
+          <CardTitle className="text-lg font-semibold">{product.product_name ?? "Unnamed Product"}</CardTitle>
+          <p className="text-sm text-muted-foreground">{product.category?.category_name ?? "No category"}</p>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="rounded-lg border bg-muted/40 p-4 text-sm">
@@ -320,20 +232,16 @@ const StockUpdateForm = () => {
               <div>
                 <span className="text-muted-foreground">Current stock:</span>
                 <span className="ml-2 font-medium">
-                  {Number(product.quantity ?? 0)} items
+                  {Number(product.inventory.find((item) => item.branch_id === user.branch_id)?.quantity ?? 0)} items
                 </span>
               </div>
               <div>
                 <span className="text-muted-foreground">Location:</span>
-                <span className="ml-2 font-medium">
-                  {user.branch_name ?? "Current branch"}
-                </span>
+                <span className="ml-2 font-medium">{user.branch_name ?? "Current branch"}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Last updated:</span>
-                <span className="ml-2 font-medium">
-                  {product.updated_on ?? "Never"}
-                </span>
+                <span className="ml-2 font-medium">{product.updated_on ?? "Never"}</span>
               </div>
             </div>
           </div>
@@ -348,45 +256,31 @@ const StockUpdateForm = () => {
           <div className="grid gap-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Buying price</span>
-              <span className="font-medium">
-                Rs. {Number(product.buying_price ?? 0).toFixed(2)}
-              </span>
+              <span className="font-medium">Rs. {Number(product.buying_price ?? 0).toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Retail price</span>
-              <span className="font-medium">
-                Rs. {Number(product.retail_price ?? 0).toFixed(2)}
-              </span>
+              <span className="font-medium">Rs. {Number(product.retail_price ?? 0).toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Current discount</span>
-              <span className="font-medium">
-                Rs. {Number(product.discount ?? 0).toFixed(2)}
-              </span>
+              <span className="font-medium">Rs. {Number(product.discount ?? 0).toFixed(2)}</span>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Change Discount (Rs.)
-                </label>
+                <label className="text-sm font-medium">Change Discount (Rs.)</label>
                 <Input
                   type="number"
                   value={discount}
                   min={0}
-                  onChange={(event) =>
-                    handleDiscountChange(Number(event.target.value))
-                  }
+                  onChange={(event) => handleDiscountChange(Number(event.target.value))}
                 />
               </div>
               <div className="flex items-end">
-                <Button
-                  onClick={updateDiscount}
-                  disabled={isMutating}
-                  className="w-full md:w-auto"
-                >
+                <Button onClick={updateDiscount} disabled={isMutating} className="w-full md:w-auto">
                   Update Discount
                 </Button>
               </div>
@@ -394,16 +288,12 @@ const StockUpdateForm = () => {
 
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Reorder Alert Level
-                </label>
+                <label className="text-sm font-medium">Reorder Alert Level</label>
                 <Input
                   type="number"
                   value={reorderLevel}
                   min={0}
-                  onChange={(event) =>
-                    handleReorderLevelChange(Number(event.target.value))
-                  }
+                  onChange={(event) => handleReorderLevelChange(Number(event.target.value))}
                 />
               </div>
               <div className="flex items-end">
@@ -422,35 +312,20 @@ const StockUpdateForm = () => {
               <label className="text-sm font-medium">Adjust Quantity</label>
               <div className="flex items-center gap-3">
                 <div className="flex items-center rounded-md border">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleQuantityChange(quantity - 1)}
-                  >
+                  <Button type="button" size="icon" variant="ghost" onClick={() => handleQuantityChange(quantity - 1)}>
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Input
                     type="number"
                     value={quantity}
-                    onChange={(event) =>
-                      handleQuantityChange(Number(event.target.value))
-                    }
+                    onChange={(event) => handleQuantityChange(Number(event.target.value))}
                     className="h-10 w-20 border-x-0 text-center"
                   />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleQuantityChange(quantity + 1)}
-                  >
+                  <Button type="button" size="icon" variant="ghost" onClick={() => handleQuantityChange(quantity + 1)}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <Button
-                  onClick={updateInventoryQuantity}
-                  disabled={isMutating || quantity === 0}
-                >
+                <Button onClick={updateInventoryQuantity} disabled={isMutating || quantity === 0}>
                   Update Inventory
                 </Button>
               </div>
@@ -458,11 +333,7 @@ const StockUpdateForm = () => {
           </div>
 
           <div className="flex justify-end">
-            <Button
-              variant="outline"
-              onClick={handleSubmitAndReturn}
-              disabled={isMutating}
-            >
+            <Button variant="outline" onClick={handleSubmitAndReturn} disabled={isMutating}>
               Save &amp; Return
             </Button>
           </div>
