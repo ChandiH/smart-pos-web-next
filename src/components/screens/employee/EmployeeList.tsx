@@ -29,8 +29,12 @@ type SortColumn = {
 };
 
 type EmployeeRecord = Employee & {
-  role_name?: string;
-  branch_name?: string;
+  branch: {
+    branch_city: string;
+  };
+  user_role: {
+    role_name: string;
+  };
 };
 
 type ColumnConfig = {
@@ -252,10 +256,10 @@ const EmployeeList = () => {
                     </TableCell>
                     <TableCell>{employee.employee_email}</TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {employee.role_name ?? "—"}
+                      {employee.user_role.role_name ?? "—"}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {employee.branch_name ?? "—"}
+                      {employee.branch.branch_city ?? "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

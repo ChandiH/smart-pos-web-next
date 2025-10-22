@@ -3,16 +3,31 @@ import type { Customer, GenericPayload, Identifier } from "./types";
 
 const RESOURCE = "/customer";
 
-export const getCustomers = () => http.get<Customer[]>(RESOURCE);
+export const getCustomers = async () => {
+  const response = await http.get<{ data: Customer[] }>(RESOURCE);
+  return response.data;
+};
 
-export const getCustomer = (id: Identifier) =>
-  http.get<Customer>(`${RESOURCE}/${id}`);
+export const getCustomer = async (id: Identifier) => {
+  const response = await http.get<{ data: Customer }>(`${RESOURCE}/${id}`);
+  return response.data;
+};
 
-export const addCustomer = (data: GenericPayload) =>
-  http.post<Customer>(RESOURCE, data);
+export const addCustomer = async (data: GenericPayload) => {
+  const response = await http.post<{ data: Customer }>(RESOURCE, data);
+  return response.data;
+};
 
-export const findEmail = (email: string) =>
-  http.get<Customer>(`${RESOURCE}/email/${encodeURIComponent(email)}`);
+export const findEmail = async (email: string) => {
+  const response = await http.get<{ data: Customer }>(
+    `${RESOURCE}/email/${encodeURIComponent(email)}`
+  );
+  return response.data;
+};
 
-export const findPhone = (phone: string) =>
-  http.get<Customer>(`${RESOURCE}/phone/${encodeURIComponent(phone)}`);
+export const findPhone = async (phone: string) => {
+  const response = await http.get<{ data: Customer }>(
+    `${RESOURCE}/phone/${encodeURIComponent(phone)}`
+  );
+  return response.data;
+};

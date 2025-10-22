@@ -1,3 +1,9 @@
+/* Common Interfaces */
+export type API_RESPONSE<T> = {
+  data: T;
+  error?: any;
+};
+
 export type Identifier = string | number;
 
 export interface Customer {

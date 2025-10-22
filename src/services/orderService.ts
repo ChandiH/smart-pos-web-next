@@ -1,9 +1,5 @@
 import http from "./httpService";
-import type {
-  GenericPayload,
-  Identifier,
-  RewardsPointsSetting,
-} from "./types";
+import type { GenericPayload, Identifier, RewardsPointsSetting } from "./types";
 
 const RESOURCE = "/cart";
 
@@ -33,11 +29,20 @@ export interface SubmitOrderPayload {
   };
 }
 
-export const submitOrder = (data: SubmitOrderPayload) =>
+export const submitOrder = async (data: SubmitOrderPayload) =>
   http.post(`${RESOURCE}/insert`, data);
 
-export const getRewardsPointsPercentage = () =>
-  http.get<RewardsPointsSetting[]>(`${RESOURCE}/rewards-points-percentage`);
+export const getRewardsPointsPercentage = async () => {
+  const response = await http.get<{ data: RewardsPointsSetting[] }>(
+    `${RESOURCE}/rewards-points-percentage`
+  );
+  return response.data;
+};
 
-export const updateRewardsPointsPercentage = (data: GenericPayload) =>
-  http.put(`${RESOURCE}/rewards-points-percentage`, data);
+export const updateRewardsPointsPercentage = async (data: GenericPayload) => {
+  const response = await http.put(
+    `${RESOURCE}/rewards-points-percentage`,
+    data
+  );
+  return response.data;
+};

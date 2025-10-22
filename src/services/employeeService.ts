@@ -1,47 +1,58 @@
+import { EmployeeWithRelations, WorkingHourWithEmployee } from "@/types/prisma-types";
 import http from "./httpService";
-import type {
-  Employee,
-  GenericPayload,
-  Identifier,
-  WorkingHourRecord,
-} from "./types";
+import type { GenericPayload, Identifier, WorkingHourRecord } from "./types";
 
 const EMPLOYEE_RESOURCE = "/employee";
 const WORKING_HOUR_RESOURCE = `${EMPLOYEE_RESOURCE}/working-hour`;
 
-export const getEmployees = () => http.get<Employee[]>(EMPLOYEE_RESOURCE);
+export const getEmployees = async () => {
+  const response = await http.get<{ data: EmployeeWithRelations[] }>(EMPLOYEE_RESOURCE);
+  return response.data;
+};
 
-export const getEmployee = (id: Identifier) =>
-  http.get<Employee>(`${EMPLOYEE_RESOURCE}/${id}`);
+export const getEmployee = async (id: Identifier) => {
+  const response = await http.get<{ data: EmployeeWithRelations }>(`${EMPLOYEE_RESOURCE}/${id}`);
+  return response.data;
+};
 
-export const getEmployeeByBranch = (branchId: Identifier) =>
-  http.get<Employee[]>(`${EMPLOYEE_RESOURCE}/branch/${branchId}`);
+export const getEmployeeByBranch = async (branchId: Identifier) => {
+  const response = await http.get<{ data: EmployeeWithRelations[] }>(`${EMPLOYEE_RESOURCE}/branch/${branchId}`);
+  return response.data;
+};
 
-export const getEmployeeByRole = (roleId: Identifier) =>
-  http.get<Employee[]>(`${EMPLOYEE_RESOURCE}/role/${roleId}`);
+export const getEmployeeByRole = async (roleId: Identifier) => {
+  const response = await http.get<{ data: EmployeeWithRelations[] }>(`${EMPLOYEE_RESOURCE}/role/${roleId}`);
+  return response.data;
+};
 
-export const updateEmployee = (id: Identifier, data: GenericPayload) =>
-  http.put<Employee>(`${EMPLOYEE_RESOURCE}/${id}`, data);
+export const updateEmployee = async (id: Identifier, data: GenericPayload) => {
+  const response = await http.put<{ data: EmployeeWithRelations }>(`${EMPLOYEE_RESOURCE}/${id}`, data);
+  return response.data;
+};
 
-export const updateEmployeeImage = (id: Identifier, file: File) => {
+export const updateEmployeeImage = async (id: Identifier, file: File) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  return http.put<Employee>(`${EMPLOYEE_RESOURCE}/image/${id}`, formData, {
+  const response = await http.put<{ data: EmployeeWithRelations }>(`${EMPLOYEE_RESOURCE}/image/${id}`, formData, {
     headers: { "content-type": "multipart/form-data" },
   });
+  return response.data;
 };
 
-export const getRecordByDate = (date: string) =>
-  http.get<WorkingHourRecord[]>(`${WORKING_HOUR_RESOURCE}/date/${date}`);
+export const getRecordByDate = async (date: string) => {
+  const response = await http.get<{ data: WorkingHourRecord[] }>(`${WORKING_HOUR_RESOURCE}/date/${date}`);
+  return response.data;
+};
 
-export const getRecordByDateBranch = (
-  date: string,
-  branchId: Identifier
-) =>
-  http.get<WorkingHourRecord[]>(
+export const getRecordByDateBranch = async (date: string, branchId: Identifier) => {
+  const response = await http.get<{ data: WorkingHourWithEmployee[] }>(
     `${WORKING_HOUR_RESOURCE}/date-branch/${date}/${branchId}`
   );
+  return response.data;
+};
 
-export const addEmployeeRecord = (data: GenericPayload) =>
-  http.post<WorkingHourRecord>(WORKING_HOUR_RESOURCE, data);
+export const addEmployeeRecord = async (data: GenericPayload) => {
+  const response = await http.post<{ data: WorkingHourWithEmployee }>(WORKING_HOUR_RESOURCE, data);
+  return response.data;
+};

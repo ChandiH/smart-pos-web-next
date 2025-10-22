@@ -1,5 +1,6 @@
+import { UserRole } from "@/types/prisma-types";
 import http from "./httpService";
-import type { AccessPermission, GenericPayload, Identifier } from "./types";
+import type { AccessPermission, API_RESPONSE, GenericPayload, Identifier } from "./types";
 
 const RESOURCE = "/user-role";
 
@@ -21,17 +22,17 @@ const staticAccessList: AccessPermission[] = [
   { access_type_id: 15, access_name: "addBranch" },
 ];
 
-export const getUserRoles = () => http.get(RESOURCE);
+export const getUserRoles = async () => {
+  const response = await http.get<API_RESPONSE<UserRole[]>>(RESOURCE);
+  return response.data;
+};
 
-export const changeUserAccess = (
-  roleId: Identifier,
-  access: Identifier[]
-) => http.post(`${RESOURCE}/update`, { role_id: roleId, access });
+export const changeUserAccess = (roleId: Identifier, access: Identifier[]) => {
+  return http.post(`${RESOURCE}/update`, { role_id: roleId, access });
+};
 
 export const accessList = (): AccessPermission[] => staticAccessList;
 
-export const addNewUserRole = (data: GenericPayload) =>
-  http.post(RESOURCE, data);
+export const addNewUserRole = (data: GenericPayload) => http.post(RESOURCE, data);
 
-export const deleteUserRole = (roleId: Identifier) =>
-  http.delete(`${RESOURCE}/${roleId}`);
+export const deleteUserRole = (roleId: Identifier) => http.delete(`${RESOURCE}/${roleId}`);

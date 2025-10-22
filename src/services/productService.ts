@@ -38,29 +38,56 @@ const createProductFormData = (
   return formData;
 };
 
-export const getProducts = () => http.get<Product[]>(RESOURCE);
+export const getProducts = async () => {
+  const response = await http.get<{ data: Product[] }>(RESOURCE);
+  return response.data;
+};
 
-export const getProduct = (id: Identifier) =>
-  http.get<Product>(`${RESOURCE}/${id}`);
+export const getProduct = async (id: Identifier) => {
+  const response = await http.get<Product>(`${RESOURCE}/${id}`);
+  return response.data;
+};
 
-export const getProductWithCategory = () =>
-  http.get<Product[]>(`${RESOURCE}/withcategory`);
+export const getProductWithCategory = async () => {
+  const response = await http.get<Product[]>(`${RESOURCE}/withcategory`);
+  return response.data;
+};
 
-export const getProductsBySupplier = (supplierId: Identifier) =>
-  http.get<Product[]>(`${RESOURCE}/supplier/${supplierId}`);
+export const getProductsBySupplier = async (supplierId: Identifier) => {
+  const response = await http.get<Product[]>(
+    `${RESOURCE}/supplier/${supplierId}`
+  );
+  return response.data;
+};
 
-export const saveProduct = (
+export const saveProduct = async (
   data: ProductFormPayload,
   files: File[] | FileList
-) =>
-  http.post<Product>(RESOURCE, createProductFormData(data, files), {
-    headers: { "content-type": "multipart/form-data" },
-  });
+) => {
+  const response = await http.post<{ data: Product }>(
+    RESOURCE,
+    createProductFormData(data, files),
+    {
+      headers: { "content-type": "multipart/form-data" },
+    }
+  );
+  return response.data;
+};
 
-export const updateProductDiscount = (
+export const updateProductDiscount = async (
   productId: Identifier,
   discount: string
-) => http.put<Product>(`${RESOURCE}/discount/${productId}`, { discount });
+) => {
+  const response = await http.put<{ data: Product }>(
+    `${RESOURCE}/discount/${productId}`,
+    { discount }
+  );
+  return response.data;
+};
 
-export const deleteProduct = (productId: Identifier) =>
-  http.delete(`${RESOURCE}/${productId}`);
+export const deleteProduct = async (productId: Identifier) => {
+  const response = await http.delete<{ data: Product }>(
+    `${RESOURCE}/${productId}`
+  );
+  return response.data;
+};

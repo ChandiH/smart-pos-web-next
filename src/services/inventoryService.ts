@@ -5,11 +5,21 @@ const RESOURCE = "/inventory";
 
 export const getInventory = () => http.get<InventoryItem[]>(RESOURCE);
 
-export const getInventoryByProduct = (id: Identifier) =>
-  http.get<InventoryItem[]>(`${RESOURCE}/product/${id}`);
+export const getInventoryByProduct = async (id: Identifier) => {
+  const response = await http.get<{ data: InventoryItem[] }>(
+    `${RESOURCE}/product/${id}`
+  );
+  return response.data;
+};
 
-export const getInventoryByBranch = (id: Identifier) =>
-  http.get<InventoryItem[]>(`${RESOURCE}/branch/${id}`);
+export const getInventoryByBranch = async (id: Identifier) => {
+  const response = await http.get<{ data: InventoryItem[] }>(
+    `${RESOURCE}/branch/${id}`
+  );
+  return response.data;
+};
 
-export const updateInventory = (data: GenericPayload) =>
-  http.post<InventoryItem>(RESOURCE, data);
+export const updateInventory = async (data: GenericPayload) => {
+  const response = await http.post<{ data: InventoryItem }>(RESOURCE, data);
+  return response.data;
+};

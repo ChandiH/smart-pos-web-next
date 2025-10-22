@@ -3,10 +3,17 @@ import type { GenericPayload, Identifier, Supplier } from "./types";
 
 const RESOURCE = "/supplier";
 
-export const getSuppliers = () => http.get<Supplier[]>(RESOURCE);
+export const getSuppliers = async () => {
+  const response = await http.get<{ data: Supplier[] }>(RESOURCE);
+  return response.data;
+};
 
-export const getSupplier = (id: Identifier) =>
-  http.get<Supplier>(`${RESOURCE}/${id}`);
+export const getSupplier = async (id: Identifier) => {
+  const response = await http.get<{ data: Supplier }>(`${RESOURCE}/${id}`);
+  return response.data;
+};
 
-export const addSupplier = (supplier: GenericPayload) =>
-  http.post<Supplier>(RESOURCE, supplier);
+export const addSupplier = async (supplier: GenericPayload) => {
+  const response = await http.post<{ data: Supplier }>(RESOURCE, supplier);
+  return response.data;
+};
