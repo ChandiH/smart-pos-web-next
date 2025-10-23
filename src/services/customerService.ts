@@ -1,33 +1,26 @@
+import { Customer } from "@/types/prisma-types";
 import http from "./httpService";
-import type { Customer, GenericPayload, Identifier } from "./types";
+import { CustomerAddRequest, CustomerGetRequest } from "@/types/request-types";
+import { API_RESPONSE } from "@/types/common-types";
 
 const RESOURCE = "/customer";
 
 export const getCustomers = async () => {
-  const response = await http.get<{ data: Customer[] }>(RESOURCE);
+  const response = await http.get<API_RESPONSE<Customer[]>>(RESOURCE);
   return response.data;
 };
 
-export const getCustomer = async (id: Identifier) => {
-  const response = await http.get<{ data: Customer }>(`${RESOURCE}/${id}`);
+export const getCustomer = async ({ customer_id }: CustomerGetRequest) => {
+  const response = await http.get<API_RESPONSE<Customer>>(`${RESOURCE}/${customer_id}`);
   return response.data;
 };
 
-export const addCustomer = async (data: GenericPayload) => {
-  const response = await http.post<{ data: Customer }>(RESOURCE, data);
+export const addCustomer = async (customer: CustomerAddRequest) => {
+  const response = await http.post<API_RESPONSE<Customer>>(RESOURCE, customer);
   return response.data;
 };
 
-export const findEmail = async (email: string) => {
-  const response = await http.get<{ data: Customer }>(
-    `${RESOURCE}/email/${encodeURIComponent(email)}`
-  );
-  return response.data;
-};
-
-export const findPhone = async (phone: string) => {
-  const response = await http.get<{ data: Customer }>(
-    `${RESOURCE}/phone/${encodeURIComponent(phone)}`
-  );
+export const updateCustomer = async (id: Customer["customer_id"], customer: CustomerAddRequest) => {
+  const response = await http.put<API_RESPONSE<Customer>>(`${RESOURCE}/${id}`, customer);
   return response.data;
 };

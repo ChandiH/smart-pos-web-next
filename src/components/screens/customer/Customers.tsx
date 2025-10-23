@@ -3,48 +3,37 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
+import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, UserPlus } from "lucide-react";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Loader2,
-  UserPlus,
-} from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+  Toast,
+} from "@/components/ui";
 import { getCustomers } from "@/services/customerService";
-import type { Customer } from "@/services/types";
-import { Toast } from "@/components/ui";
 import useBarcodeScanner from "@/hooks/useBarcodeScanner";
-
-type SortDirection = "asc" | "desc";
+import { SortDirection } from "@/types/common-types";
+import { Customer } from "@/types/prisma-types";
 
 type SortColumn = {
-  path: keyof CustomerRow;
+  path: keyof Customer;
   order: SortDirection;
-};
-
-type CustomerRow = Customer & {
-  customer_phone?: string | number;
-  customer_email?: string;
-  rewards_points?: number;
 };
 
 const PAGE_SIZE = 30;
 
 const Customers = () => {
   const router = useRouter();
-  const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,8 +46,7 @@ const Customers = () => {
     try {
       setIsLoading(true);
       const { data } = await getCustomers();
-      const payload = Array.isArray(data) ? (data as CustomerRow[]) : [];
-      setCustomers(payload);
+      setCustomers(data || []);
     } catch (error) {
       console.error("Failed to load customers", error);
       Toast.error("Unable to load customers. Please try again.");
@@ -71,12 +59,11 @@ const Customers = () => {
     void fetchCustomers();
   }, []);
 
-  useBarcodeScanner<CustomerRow>({
+  useBarcodeScanner<Customer>({
     enabled: customers.length > 0,
     items: customers,
     getBarcode: (item) => {
-      const raw =
-        item.customer_contact ?? item.customer_phone ?? item.customer_id;
+      const raw = item.customer_phone ?? item.customer_id;
       if (raw === undefined || raw === null) return undefined;
       if (typeof raw === "number") return String(raw);
       if (typeof raw === "string") return raw.trim();
@@ -102,25 +89,13 @@ const Customers = () => {
     const query = searchQuery.trim().toLowerCase();
     return customers.filter((customer) => {
       const matchesName = customer.customer_name?.toLowerCase().includes(query);
-      const matchesPhone = customer.customer_phone
-        ?.toString()
-        .toLowerCase()
-        .includes(query);
-      const matchesContact = customer.customer_contact
-        ?.toString()
-        .toLowerCase()
-        .includes(query);
-      return Boolean(matchesName || matchesPhone || matchesContact);
+      const matchesPhone = customer.customer_phone?.toString().toLowerCase().includes(query);
+      return Boolean(matchesName || matchesPhone);
     });
   }, [customers, searchQuery]);
 
   const sortedCustomers = useMemo(
-    () =>
-      orderBy(
-        filteredCustomers,
-        [sortColumn.path as string],
-        [sortColumn.order]
-      ),
+    () => orderBy(filteredCustomers, [sortColumn.path as string], [sortColumn.order]),
     [filteredCustomers, sortColumn]
   );
 
@@ -153,11 +128,7 @@ const Customers = () => {
     if (sortColumn.path !== path) {
       return <ArrowUpDown className="h-3.5 w-3.5" />;
     }
-    return sortColumn.order === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
+    return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   };
 
   return (
@@ -165,9 +136,7 @@ const Customers = () => {
       <CardHeader className="flex flex-col gap-4 border-b border-border sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="text-lg font-semibold">Customers</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Showing {sortedCustomers.length} customers in the database.
-          </p>
+          <p className="text-sm text-muted-foreground">Showing {sortedCustomers.length} customers in the database.</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Input
@@ -187,37 +156,25 @@ const Customers = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("customer_name")}
-                >
+                <TableHead className="cursor-pointer" onClick={() => handleSort("customer_name")}>
                   <span className="inline-flex items-center gap-1">
                     Name
                     {renderSortIcon("customer_name")}
                   </span>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("customer_phone")}
-                >
+                <TableHead className="cursor-pointer" onClick={() => handleSort("customer_phone")}>
                   <span className="inline-flex items-center gap-1">
                     Contact
                     {renderSortIcon("customer_phone")}
                   </span>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("customer_email")}
-                >
+                <TableHead className="cursor-pointer" onClick={() => handleSort("customer_email")}>
                   <span className="inline-flex items-center gap-1">
                     Email
                     {renderSortIcon("customer_email")}
                   </span>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer text-right"
-                  onClick={() => handleSort("rewards_points")}
-                >
+                <TableHead className="cursor-pointer text-right" onClick={() => handleSort("rewards_points")}>
                   <span className="inline-flex items-center gap-1 justify-end">
                     Loyalty Points
                     {renderSortIcon("rewards_points")}
@@ -228,10 +185,7 @@ const Customers = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="py-10 text-center text-muted-foreground"
-                  >
+                  <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Loading customers…
@@ -240,32 +194,16 @@ const Customers = () => {
                 </TableRow>
               ) : paginatedCustomers.length > 0 ? (
                 paginatedCustomers.map((customer, index) => (
-                  <TableRow
-                    key={String(
-                      customer.customer_id ??
-                        `${customer.customer_email ?? "customer"}-${index}`
-                    )}
-                  >
-                    <TableCell className="font-medium">
-                      {customer.customer_name ?? "Unnamed"}
-                    </TableCell>
-                    <TableCell>
-                      {customer.customer_phone ?? "Not provided"}
-                    </TableCell>
-                    <TableCell>
-                      {customer.customer_email ?? "Not provided"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {Number(customer.rewards_points ?? 0).toFixed(2)}
-                    </TableCell>
+                  <TableRow key={String(customer.customer_id ?? `${customer.customer_email ?? "customer"}-${index}`)}>
+                    <TableCell className="font-medium">{customer.customer_name ?? "Unnamed"}</TableCell>
+                    <TableCell>{customer.customer_phone ?? "Not provided"}</TableCell>
+                    <TableCell>{customer.customer_email ?? "Not provided"}</TableCell>
+                    <TableCell className="text-right">{Number(customer.rewards_points ?? 0).toFixed(2)}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="py-10 text-center text-muted-foreground"
-                  >
+                  <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                     No customers found.
                   </TableCell>
                 </TableRow>
@@ -274,11 +212,7 @@ const Customers = () => {
           </Table>
         </div>
         {sortedCustomers.length > PAGE_SIZE && (
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onChange={setCurrentPage}
-          />
+          <PaginationControls currentPage={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
         )}
       </CardContent>
     </Card>
@@ -291,11 +225,7 @@ type PaginationControlsProps = {
   onChange: (page: number) => void;
 };
 
-const PaginationControls = ({
-  currentPage,
-  totalPages,
-  onChange,
-}: PaginationControlsProps) => {
+const PaginationControls = ({ currentPage, totalPages, onChange }: PaginationControlsProps) => {
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   return (

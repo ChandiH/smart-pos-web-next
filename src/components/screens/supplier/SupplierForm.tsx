@@ -4,22 +4,25 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Toast } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  Toast,
+} from "@/components/ui";
 import { addSupplier, getSupplier, updateSupplier } from "@/services/supplierService";
-import type { Identifier } from "@/services/types";
 import { Supplier } from "@/types/prisma-types";
 import { SupplierAddRequest } from "@/types/request-types";
-
-type SupplierRecord = Supplier &
-  SupplierAddRequest & {
-    supplier_contact?: string;
-    contact_number?: string;
-  };
 
 const defaultValues: SupplierAddRequest = {
   supplier_name: "",

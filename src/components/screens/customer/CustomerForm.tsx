@@ -2,38 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
+import { useForm } from "react-hook-form";
+import { addCustomer, getCustomer, updateCustomer } from "@/services/customerService";
 import {
+  Button,
   Card,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { addCustomer, getCustomer } from "@/services/customerService";
-import type { Customer, Identifier } from "@/services/types";
-import { Toast } from "@/components/ui";
+  Input,
+  Toast,
+} from "@/components/ui";
+import { CustomerAddRequest } from "@/types/request-types";
+import { Customer } from "@/types/prisma-types";
 
-type CustomerFormValues = {
-  customer_name: string;
-  customer_phone: string;
-  customer_email: string;
-  customer_address: string;
-};
-
-const defaultValues: CustomerFormValues = {
+const defaultValues: CustomerAddRequest = {
   customer_name: "",
   customer_phone: "",
   customer_email: "",
@@ -48,8 +39,9 @@ const CustomerForm = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentCustomerId, setCurrentCustomerId] = useState<Customer["customer_id"] | null>(null);
 
-  const form = useForm<CustomerFormValues>({
+  const form = useForm<CustomerAddRequest>({
     defaultValues,
     mode: "onSubmit",
   });
@@ -60,16 +52,13 @@ const CustomerForm = () => {
 
       try {
         setIsLoading(true);
-        const { data } = await getCustomer(customerId as Identifier);
-        const customer = data as Customer;
+        const { data: customer } = await getCustomer({ customer_id: Number(customerId) });
+        setCurrentCustomerId(customer.customer_id ?? null);
         form.reset({
           customer_name: customer.customer_name ?? "",
-          customer_phone: customer.customer_phone
-            ? String(customer.customer_phone)
-            : "",
+          customer_phone: customer.customer_phone ?? "",
           customer_email: customer.customer_email ?? "",
-          customer_address:
-            (customer as Record<string, string>).customer_address ?? "",
+          customer_address: customer.customer_address ?? "",
         });
       } catch (error) {
         console.error("Failed to load customer", error);
@@ -84,10 +73,12 @@ const CustomerForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, isEditing]);
 
-  const handleSubmit = async (values: CustomerFormValues) => {
+  const handleSubmit = async (values: CustomerAddRequest) => {
     try {
       setIsSubmitting(true);
-      const promise = addCustomer(values);
+      const payload = currentCustomerId ? { ...values, customer_id: currentCustomerId } : values;
+      const promise =
+        isEditing && currentCustomerId ? updateCustomer(currentCustomerId, payload) : addCustomer(payload);
       Toast.promise(promise, {
         loading: "Saving customer…",
         success: "Customer saved successfully",
@@ -105,9 +96,7 @@ const CustomerForm = () => {
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">
-          {isEditing ? "Edit Customer" : "Add New Customer"}
-        </CardTitle>
+        <CardTitle className="text-xl font-semibold">{isEditing ? "Edit Customer" : "Add New Customer"}</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -117,10 +106,7 @@ const CustomerForm = () => {
           </div>
         ) : (
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleSubmit)}
-              className="space-y-6"
-            >
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="customer_name"
@@ -129,7 +115,7 @@ const CustomerForm = () => {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Customer name" {...field} />
+                      <Input placeholder="Customer name" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -149,7 +135,7 @@ const CustomerForm = () => {
                   <FormItem>
                     <FormLabel>Contact Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="0712345678" {...field} />
+                      <Input type="tel" placeholder="0712345678" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -169,7 +155,7 @@ const CustomerForm = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="customer@example.com" {...field} />
+                      <Input type="email" placeholder="customer@example.com" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -183,7 +169,7 @@ const CustomerForm = () => {
                   <FormItem>
                     <FormLabel>Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="Optional address" {...field} />
+                      <Input placeholder="Optional address" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -192,17 +178,11 @@ const CustomerForm = () => {
 
               <CardFooter className="px-0">
                 <div className="flex w-full items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.back()}
-                  >
+                  <Button type="button" variant="outline" onClick={() => router.back()}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Customer
                   </Button>
                 </div>

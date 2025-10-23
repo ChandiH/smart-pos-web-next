@@ -1,7 +1,7 @@
 import http from "./httpService";
+import { API_RESPONSE } from "@/types/common-types";
 import { Supplier, SupplierWithProducts } from "@/types/prisma-types";
 import { SupplierAddRequest, SupplierGetRequest } from "@/types/request-types";
-import { API_RESPONSE } from "./types";
 
 const RESOURCE = "/supplier";
 
