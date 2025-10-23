@@ -5,63 +5,48 @@ import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Card,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
+  Input,
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+  Textarea,
+  Toast,
+} from "@/components/ui";
 import { getCategories } from "@/services/categoryService";
 import { getSuppliers } from "@/services/supplierService";
-import { getProduct, saveProduct } from "@/services/productService";
-import type { Category, Identifier, Product, Supplier } from "@/services/types";
-import { Toast } from "@/components/ui";
+import { addProduct, getProduct, updateProduct } from "@/services/productService";
+import { ProductAddRequest } from "@/types/request-types";
 
 type Option = {
   value: string;
   label: string;
 };
 
-type ProductFormValues = {
-  product_name: string;
-  product_desc: string;
-  category_id: string;
-  buying_price: string;
-  retail_price: string;
-  discount: string;
-  product_barcode: string;
-  supplier_id: string;
-};
-
-const defaultValues: ProductFormValues = {
+const defaultValues: ProductAddRequest = {
   product_name: "",
   product_desc: "",
-  category_id: "",
+  category_id: 0,
   buying_price: "",
   retail_price: "",
   discount: "",
   product_barcode: "",
-  supplier_id: "",
+  supplier_id: 0,
 };
 
 const ProductForm = () => {
@@ -76,7 +61,7 @@ const ProductForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<ProductFormValues>({
+  const form = useForm<ProductAddRequest>({
     defaultValues,
     mode: "onSubmit",
   });
@@ -84,18 +69,17 @@ const ProductForm = () => {
   const loadMetadata = async () => {
     try {
       setIsLoading(true);
-      const [{ data: categoryData }, { data: supplierData }] =
-        await Promise.all([getCategories(), getSuppliers()]);
+      const [{ data: categoryData }, { data: supplierData }] = await Promise.all([getCategories(), getSuppliers()]);
 
       const categoryOptions: Option[] = Array.isArray(categoryData)
-        ? (categoryData as Category[]).map((category) => ({
+        ? categoryData.map((category) => ({
             value: String(category.category_id ?? ""),
             label: category.category_name ?? "Category",
           }))
         : [];
 
       const supplierOptions: Option[] = Array.isArray(supplierData)
-        ? (supplierData as Supplier[]).map((supplier) => ({
+        ? supplierData.map((supplier) => ({
             value: String(supplier.supplier_id ?? ""),
             label: supplier.supplier_name ?? "Supplier",
           }))
@@ -118,27 +102,23 @@ const ProductForm = () => {
   useEffect(() => {
     const loadProduct = async () => {
       if (!isEditing) {
+        setIsLoading(false);
         form.reset(defaultValues);
         return;
       }
 
       try {
         setIsLoading(true);
-        const { data } = await getProduct(productId as Identifier);
-        const product = data as Product;
+        const { data: product } = await getProduct(productId);
         form.reset({
           product_name: product.product_name ?? "",
           product_desc: product.product_desc ?? "",
-          category_id: product.category_id ? String(product.category_id) : "",
-          buying_price: product.buying_price
-            ? String(product.buying_price)
-            : "",
-          retail_price: product.retail_price
-            ? String(product.retail_price)
-            : "",
+          category_id: product.category_id ?? 0,
+          buying_price: product.buying_price ? String(product.buying_price) : "",
+          retail_price: product.retail_price ? String(product.retail_price) : "",
           discount: product.discount ? String(product.discount) : "",
           product_barcode: product.product_barcode ?? "",
-          supplier_id: product.supplier_id ? String(product.supplier_id) : "",
+          supplier_id: product.supplier_id ?? 0,
         });
       } catch (error) {
         console.error("Failed to load product", error);
@@ -161,26 +141,25 @@ const ProductForm = () => {
     setFiles(Array.from(targetFiles));
   };
 
-  const handleSubmit = async (values: ProductFormValues) => {
+  const handleSubmit = async (values: ProductAddRequest) => {
     try {
       setIsSubmitting(true);
       const payload = {
         product_name: values.product_name,
         product_desc: values.product_desc,
         category_id: values.category_id,
-        buying_price: Number(values.buying_price || 0),
-        retail_price: Number(values.retail_price || 0),
-        discount: Number(values.discount || 0),
+        buying_price: String(values.buying_price || 0),
+        retail_price: String(values.retail_price || 0),
+        discount: String(values.discount || 0),
         product_barcode: values.product_barcode,
         supplier_id: values.supplier_id,
       };
 
-      const promise = saveProduct(payload, files);
+      const promise = isEditing && productId ? updateProduct(productId, payload) : addProduct(payload);
       Toast.promise(promise, {
         loading: "Saving product…",
         success: () => "Product saved successfully",
-        error: (error) =>
-          error.response?.data?.error ?? "Failed to save product",
+        error: (error) => error.response?.data?.error ?? "Failed to save product",
       });
       await promise;
       router.replace("/inventory/catalog");
@@ -200,9 +179,7 @@ const ProductForm = () => {
   return (
     <Card className="w-full max-w-3xl">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">
-          {isEditing ? "Edit Product" : "Add New Product"}
-        </CardTitle>
+        <CardTitle className="text-xl font-semibold">{isEditing ? "Edit Product" : "Add New Product"}</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -212,10 +189,7 @@ const ProductForm = () => {
           </div>
         ) : (
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleSubmit)}
-              className="space-y-6"
-            >
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="product_name"
@@ -238,11 +212,7 @@ const ProductForm = () => {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Optional description"
-                        rows={4}
-                        {...field}
-                      />
+                      <Textarea placeholder="Optional description" rows={4} {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -258,20 +228,14 @@ const ProductForm = () => {
                     <FormItem>
                       <FormLabel>Category</FormLabel>
                       <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
+                        <Select value={String(field.value)} onValueChange={field.onChange}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
                               {categories.map((option) => (
-                                <SelectItem
-                                  key={option.value}
-                                  value={option.value}
-                                >
+                                <SelectItem key={option.value} value={option.value}>
                                   {option.label}
                                 </SelectItem>
                               ))}
@@ -291,20 +255,14 @@ const ProductForm = () => {
                     <FormItem>
                       <FormLabel>Supplier</FormLabel>
                       <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
+                        <Select value={String(field.value)} onValueChange={field.onChange}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select supplier" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
                               {suppliers.map((option) => (
-                                <SelectItem
-                                  key={option.value}
-                                  value={option.value}
-                                >
+                                <SelectItem key={option.value} value={option.value}>
                                   {option.label}
                                 </SelectItem>
                               ))}
@@ -354,7 +312,7 @@ const ProductForm = () => {
                     <FormItem>
                       <FormLabel>Discount</FormLabel>
                       <FormControl>
-                        <Input type="number" min="0" step="0.01" {...field} />
+                        <Input type="number" min="0" step="0.01" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -385,25 +343,17 @@ const ProductForm = () => {
                     accept="image/*"
                     onChange={(event) => handleFilesChange(event.target.files)}
                   />
-                  <p className="text-sm text-muted-foreground">
-                    {selectedFilesLabel}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{selectedFilesLabel}</p>
                 </div>
               </div>
 
               <CardFooter className="px-0">
                 <div className="flex w-full items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.back()}
-                  >
+                  <Button type="button" variant="outline" onClick={() => router.back()}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Product
                   </Button>
                 </div>

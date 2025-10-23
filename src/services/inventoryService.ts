@@ -1,6 +1,7 @@
-import { ProductWithInventory } from "@/types/prisma-types";
+import { ProductDetails, ProductWithInventory } from "@/types/prisma-types";
 import http from "./httpService";
 import type { GenericPayload, Identifier, InventoryItem } from "./types";
+import { API_RESPONSE } from "@/types/common-types";
 
 const RESOURCE = "/inventory";
 
@@ -13,6 +14,11 @@ export const getInventoryByProduct = async (id: Identifier) => {
 
 export const getInventoryByBranch = async (id: Identifier) => {
   const response = await http.get<{ data: InventoryItem[] }>(`${RESOURCE}/branch/${id}`);
+  return response.data;
+};
+
+export const getInventoryWithProduct = async () => {
+  const response = await http.get<API_RESPONSE<ProductDetails[]>>(`${RESOURCE}/withproduct`);
   return response.data;
 };
 

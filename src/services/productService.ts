@@ -1,93 +1,46 @@
 import http from "./httpService";
-import type { Identifier, Product } from "./types";
+import { Product, ProductDetails, ProductWithCategory } from "@/types/prisma-types";
+import { API_RESPONSE } from "@/types/common-types";
+import { ProductAddRequest } from "@/types/request-types";
 
 const RESOURCE = "/product";
 
-export interface ProductFormPayload extends Partial<Product> {
-  product_name: string;
-  category_id: Identifier;
-  supplier_id: Identifier;
-  buying_price: number;
-  retail_price: number;
-  discount?: number;
-  product_desc?: string;
-  product_barcode?: string;
-}
-
-const createProductFormData = (
-  payload: ProductFormPayload,
-  files: File[] | FileList
-) => {
-  const formData = new FormData();
-
-  Array.from(files).forEach((file) => formData.append("files", file));
-
-  formData.append("product_name", payload.product_name);
-  formData.append("product_desc", payload.product_desc ?? "");
-  formData.append("category_id", String(payload.category_id ?? ""));
-  formData.append(
-    "product_image",
-    payload.product_image !== undefined ? String(payload.product_image) : ""
-  );
-  formData.append("buying_price", String(payload.buying_price));
-  formData.append("retail_price", String(payload.retail_price));
-  formData.append("discount", String(payload.discount ?? 0));
-  formData.append("supplier_id", String(payload.supplier_id ?? ""));
-  formData.append("product_barcode", payload.product_barcode ?? "");
-
-  return formData;
-};
-
 export const getProducts = async () => {
-  const response = await http.get<{ data: Product[] }>(RESOURCE);
+  const response = await http.get<API_RESPONSE<ProductWithCategory[]>>(RESOURCE);
   return response.data;
 };
 
-export const getProduct = async (id: Identifier) => {
-  const response = await http.get<Product>(`${RESOURCE}/${id}`);
+export const getProduct = async (id: Product["product_id"]) => {
+  const response = await http.get<API_RESPONSE<ProductDetails>>(`${RESOURCE}/${id}`);
   return response.data;
 };
 
 export const getProductWithCategory = async () => {
-  const response = await http.get<Product[]>(`${RESOURCE}/withcategory`);
+  const response = await http.get<API_RESPONSE<ProductWithCategory[]>>(`${RESOURCE}/withcategory`);
   return response.data;
 };
 
-export const getProductsBySupplier = async (supplierId: Identifier) => {
-  const response = await http.get<Product[]>(
-    `${RESOURCE}/supplier/${supplierId}`
-  );
+export const getProductsBySupplier = async (supplierId: Product["supplier_id"]) => {
+  const response = await http.get<API_RESPONSE<ProductWithCategory[]>>(`${RESOURCE}/supplier/${supplierId}`);
   return response.data;
 };
 
-export const saveProduct = async (
-  data: ProductFormPayload,
-  files: File[] | FileList
-) => {
-  const response = await http.post<{ data: Product }>(
-    RESOURCE,
-    createProductFormData(data, files),
-    {
-      headers: { "content-type": "multipart/form-data" },
-    }
-  );
+export const addProduct = async (data: ProductAddRequest) => {
+  const response = await http.post<API_RESPONSE<Product>>(RESOURCE, data);
   return response.data;
 };
 
-export const updateProductDiscount = async (
-  productId: Identifier,
-  discount: string
-) => {
-  const response = await http.put<{ data: Product }>(
-    `${RESOURCE}/discount/${productId}`,
-    { discount }
-  );
+export const updateProduct = async (id: Product["product_id"], data: ProductAddRequest) => {
+  const response = await http.put<API_RESPONSE<Product>>(`${RESOURCE}/${id}`, data);
   return response.data;
 };
 
-export const deleteProduct = async (productId: Identifier) => {
-  const response = await http.delete<{ data: Product }>(
-    `${RESOURCE}/${productId}`
-  );
+export const updateProductDiscount = async (productId: Product["product_id"], discount: string) => {
+  const response = await http.put<API_RESPONSE<Product>>(`${RESOURCE}/discount/${productId}`, { discount });
+  return response.data;
+};
+
+export const deleteProduct = async (productId: Product["product_id"]) => {
+  const response = await http.delete<API_RESPONSE<Product>>(`${RESOURCE}/${productId}`);
   return response.data;
 };

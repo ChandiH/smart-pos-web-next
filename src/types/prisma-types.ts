@@ -204,3 +204,13 @@ export type ProductWithInventory = Product & {
 export type SupplierWithProducts = Supplier & {
   product: Product[];
 };
+
+export type ProductWithCategory = Product & {
+  category?: Category;
+};
+
+export type ProductDetails = Product & {
+  category?: Category;
+  supplier?: Supplier;
+  inventory: Inventory[];
+};
