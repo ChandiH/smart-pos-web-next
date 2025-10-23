@@ -200,3 +200,7 @@ export type ProductWithInventory = Product & {
   inventory: Inventory[];
   category?: Category;
 };
+
+export type SupplierWithProducts = Supplier & {
+  product: Product[];
+};

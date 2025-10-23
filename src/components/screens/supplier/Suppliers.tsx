@@ -8,34 +8,20 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import type { Supplier } from "@/services/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getSuppliers } from "@/services/supplierService";
 import { Toast } from "@/components/ui";
+import { Supplier } from "@/types/prisma-types";
 
 type SortDirection = "asc" | "desc";
 
-type SupplierRecord = Supplier & {
-  supplier_email?: string;
-  supplier_phone?: string | number;
-  supplier_address?: string;
-  supplier_name?: string;
-};
-
 type SortColumn = {
-  path: keyof SupplierRecord | "supplier_id";
+  path: keyof Supplier | "supplier_id";
   order: SortDirection;
 };
 
 type ColumnConfig = {
-  key: keyof SupplierRecord | "actions" | "supplier_id";
+  key: keyof Supplier | "actions" | "supplier_id";
   label: string;
   path?: SortColumn["path"];
   align?: "left" | "right";
@@ -70,11 +56,11 @@ const columns: ColumnConfig[] = [
   { key: "supplier_address", label: "Address" },
 ];
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 const Suppliers = () => {
   const router = useRouter();
-  const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,8 +72,13 @@ const Suppliers = () => {
   const fetchSuppliers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data } = await getSuppliers();
-      setSuppliers(Array.isArray(data) ? (data as SupplierRecord[]) : []);
+      const { data, error } = await getSuppliers();
+      if (error) {
+        Toast.error(error.message || "Failed to fetch suppliers.");
+        setSuppliers([]);
+        return;
+      }
+      setSuppliers(data || []);
     } catch (error) {
       console.error("Failed to load suppliers", error);
       Toast.error("Unable to load suppliers. Please try again.");
@@ -108,23 +99,14 @@ const Suppliers = () => {
     if (!searchQuery) return suppliers;
     const query = searchQuery.trim().toLowerCase();
     return suppliers.filter((supplier) => {
-      const name =
-        supplier.supplier_name ?? (supplier as Record<string, string>).name;
-      const id =
-        supplier.supplier_id ?? (supplier as Record<string, string>).id;
-      const matchesName = name?.toLowerCase().includes(query);
-      const matchesId = id?.toString().toLowerCase().startsWith(query);
+      const matchesName = supplier.supplier_name.toLowerCase().includes(query);
+      const matchesId = supplier.supplier_id.toString().toLowerCase().startsWith(query);
       return Boolean(matchesName || matchesId);
     });
   }, [suppliers, searchQuery]);
 
   const sortedSuppliers = useMemo(
-    () =>
-      orderBy(
-        filteredSuppliers,
-        [sortColumn.path as string],
-        [sortColumn.order]
-      ),
+    () => orderBy(filteredSuppliers, [sortColumn.path as string], [sortColumn.order]),
     [filteredSuppliers, sortColumn]
   );
 
@@ -153,16 +135,8 @@ const Suppliers = () => {
     });
   };
 
-  const handleSelect = (supplier: SupplierRecord) => {
-    try {
-      window.sessionStorage.setItem(
-        "selectedSupplier",
-        JSON.stringify(supplier ?? {})
-      );
-    } catch (error) {
-      console.warn("Unable to store supplier in session storage", error);
-    }
-    router.push("/suppliers/profile");
+  const handleSelect = (supplier: Supplier) => {
+    router.push(`/suppliers/profile/${supplier.supplier_id}`);
   };
 
   const handleAddSupplier = () => {
@@ -178,21 +152,16 @@ const Suppliers = () => {
       return <ArrowUpDown className="h-3.5 w-3.5" />;
     }
 
-    return sortColumn.order === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
+    return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   };
 
-  const getSupplierField = (
-    supplier: SupplierRecord,
-    ...keys: (keyof SupplierRecord | string)[]
-  ) => {
+  const getSupplierField = (supplier: Supplier, ...keys: (keyof Supplier | string)[]) => {
     for (const key of keys) {
-      const value = supplier[key];
-      if (value !== undefined && value !== null && value !== "") {
-        return value;
+      if (key in supplier) {
+        const value = supplier[key as keyof Supplier];
+        if (value !== undefined && value !== null && value !== "") {
+          return value;
+        }
       }
     }
     return undefined;
@@ -203,9 +172,7 @@ const Suppliers = () => {
       <CardHeader className="flex flex-col gap-4 border-b border-border sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="text-lg font-semibold">Suppliers</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Showing {sortedSuppliers.length} suppliers in the database.
-          </p>
+          <p className="text-sm text-muted-foreground">Showing {sortedSuppliers.length} suppliers in the database.</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Input
@@ -229,15 +196,9 @@ const Suppliers = () => {
                   <TableHead
                     key={column.key}
                     className={column.sortable ? "cursor-pointer" : undefined}
-                    onClick={() =>
-                      column.sortable && column.path && handleSort(column.path)
-                    }
+                    onClick={() => column.sortable && column.path && handleSort(column.path)}
                   >
-                    <span
-                      className={`inline-flex items-center gap-1 ${
-                        column.align === "right" ? "justify-end" : ""
-                      }`}
-                    >
+                    <span className={`inline-flex items-center gap-1 ${column.align === "right" ? "justify-end" : ""}`}>
                       {column.label}
                       {renderSortIcon(column)}
                     </span>
@@ -248,10 +209,7 @@ const Suppliers = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="py-10 text-center text-muted-foreground"
-                  >
+                  <TableCell colSpan={columns.length} className="py-10 text-center text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Loading suppliers…
@@ -261,56 +219,31 @@ const Suppliers = () => {
               ) : paginatedSuppliers.length > 0 ? (
                 paginatedSuppliers.map((supplier, index) => (
                   <TableRow
-                    key={String(
-                      getSupplierField(supplier, "supplier_id", "id") ?? index
-                    )}
+                    key={String(getSupplierField(supplier, "supplier_id", "id") ?? index)}
                     className="cursor-pointer hover:bg-muted/60"
                     onClick={() => handleSelect(supplier)}
                   >
                     <TableCell>{supplier.supplier_id ?? "—"}</TableCell>
                     <TableCell className="font-medium">
-                      {String(
-                        getSupplierField(
-                          supplier,
-                          "supplier_name",
-                          "name",
-                          "contact_person"
-                        ) ?? "Unnamed"
-                      )}
+                      {String(getSupplierField(supplier, "supplier_name", "name", "contact_person") ?? "Unnamed")}
+                    </TableCell>
+                    <TableCell>
+                      {String(getSupplierField(supplier, "supplier_email", "email") ?? "Not provided")}
                     </TableCell>
                     <TableCell>
                       {String(
-                        getSupplierField(supplier, "supplier_email", "email") ??
+                        getSupplierField(supplier, "supplier_phone", "contact_number", "supplier_contact") ??
                           "Not provided"
                       )}
                     </TableCell>
                     <TableCell>
-                      {String(
-                        getSupplierField(
-                          supplier,
-                          "supplier_phone",
-                          "contact_number",
-                          "supplier_contact"
-                        ) ?? "Not provided"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {String(
-                        getSupplierField(
-                          supplier,
-                          "supplier_address",
-                          "address"
-                        ) ?? "Not provided"
-                      )}
+                      {String(getSupplierField(supplier, "supplier_address", "address") ?? "Not provided")}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="py-10 text-center text-muted-foreground"
-                  >
+                  <TableCell colSpan={columns.length} className="py-10 text-center text-muted-foreground">
                     No suppliers found.
                   </TableCell>
                 </TableRow>
@@ -319,11 +252,7 @@ const Suppliers = () => {
           </Table>
         </div>
         {sortedSuppliers.length > PAGE_SIZE && (
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onChange={setCurrentPage}
-          />
+          <PaginationControls currentPage={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
         )}
       </CardContent>
     </Card>
@@ -336,11 +265,7 @@ type PaginationControlsProps = {
   onChange: (page: number) => void;
 };
 
-const PaginationControls = ({
-  currentPage,
-  totalPages,
-  onChange,
-}: PaginationControlsProps) => {
+const PaginationControls = ({ currentPage, totalPages, onChange }: PaginationControlsProps) => {
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   return (

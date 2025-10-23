@@ -6,40 +6,22 @@ import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Toast } from "@/components/ui";
-import { addSupplier, getSupplier } from "@/services/supplierService";
-import type { Identifier, Supplier } from "@/services/types";
-
-type SupplierFormValues = {
-  supplier_name: string;
-  supplier_email: string;
-  supplier_phone: string;
-  supplier_address: string;
-};
+import { addSupplier, getSupplier, updateSupplier } from "@/services/supplierService";
+import type { Identifier } from "@/services/types";
+import { Supplier } from "@/types/prisma-types";
+import { SupplierAddRequest } from "@/types/request-types";
 
 type SupplierRecord = Supplier &
-  SupplierFormValues & {
+  SupplierAddRequest & {
     supplier_contact?: string;
     contact_number?: string;
   };
 
-const defaultValues: SupplierFormValues = {
+const defaultValues: SupplierAddRequest = {
   supplier_name: "",
   supplier_email: "",
   supplier_phone: "",
@@ -54,11 +36,9 @@ const SupplierForm = () => {
 
   const [isLoading, setIsLoading] = useState(isEditing);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentSupplierId, setCurrentSupplierId] = useState<Identifier | null>(
-    null
-  );
+  const [currentSupplierId, setCurrentSupplierId] = useState<Supplier["supplier_id"] | null>(null);
 
-  const form = useForm<SupplierFormValues>({
+  const form = useForm<SupplierAddRequest>({
     defaultValues,
     mode: "onSubmit",
   });
@@ -72,31 +52,13 @@ const SupplierForm = () => {
 
       try {
         setIsLoading(true);
-        const { data } = await getSupplier(supplierId as Identifier);
-        const supplier = data as SupplierRecord;
-        setCurrentSupplierId(
-          supplier.supplier_id ??
-            (supplier as Record<string, Identifier>).id ??
-            null
-        );
+        const { data: supplier } = await getSupplier({ supplier_id: Number(supplierId) });
+        setCurrentSupplierId(supplier.supplier_id ?? null);
         form.reset({
-          supplier_name:
-            supplier.supplier_name ??
-            (supplier as Record<string, string>).name ??
-            "",
-          supplier_email:
-            supplier.supplier_email ??
-            (supplier as Record<string, string>).email ??
-            "",
-          supplier_phone:
-            supplier.supplier_phone?.toString() ??
-            supplier.supplier_contact?.toString() ??
-            supplier.contact_number?.toString() ??
-            "",
-          supplier_address:
-            supplier.supplier_address ??
-            (supplier as Record<string, string>).address ??
-            "",
+          supplier_name: supplier.supplier_name ?? "",
+          supplier_email: supplier.supplier_email ?? "",
+          supplier_phone: supplier.supplier_phone ?? "",
+          supplier_address: supplier.supplier_address ?? "",
         });
       } catch (error) {
         console.error("Failed to load supplier", error);
@@ -111,13 +73,12 @@ const SupplierForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierId, isEditing]);
 
-  const handleSubmit = async (values: SupplierFormValues) => {
+  const handleSubmit = async (values: SupplierAddRequest) => {
     try {
       setIsSubmitting(true);
-      const payload = currentSupplierId
-        ? { ...values, supplier_id: currentSupplierId }
-        : values;
-      const promise = addSupplier(payload);
+      const payload = currentSupplierId ? { ...values, supplier_id: currentSupplierId } : values;
+      const promise =
+        isEditing && currentSupplierId ? updateSupplier(currentSupplierId, payload) : addSupplier(payload);
       Toast.promise(promise, {
         loading: isEditing ? "Updating supplier…" : "Saving supplier…",
         success: "Supplier saved successfully",
@@ -135,9 +96,7 @@ const SupplierForm = () => {
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">
-          {isEditing ? "Edit Supplier" : "Add New Supplier"}
-        </CardTitle>
+        <CardTitle className="text-xl font-semibold">{isEditing ? "Edit Supplier" : "Add New Supplier"}</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -147,10 +106,7 @@ const SupplierForm = () => {
           </div>
         ) : (
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleSubmit)}
-              className="space-y-6"
-            >
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="supplier_name"
@@ -159,7 +115,7 @@ const SupplierForm = () => {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Supplier name" {...field} />
+                      <Input placeholder="Supplier name" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -180,11 +136,7 @@ const SupplierForm = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="supplier@example.com"
-                        {...field}
-                      />
+                      <Input type="email" placeholder="supplier@example.com" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -205,7 +157,7 @@ const SupplierForm = () => {
                   <FormItem>
                     <FormLabel>Contact Number</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="0712345678" {...field} />
+                      <Input type="tel" placeholder="0712345678" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -220,7 +172,7 @@ const SupplierForm = () => {
                   <FormItem>
                     <FormLabel>Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="Supplier address" {...field} />
+                      <Input placeholder="Supplier address" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -229,17 +181,11 @@ const SupplierForm = () => {
 
               <CardFooter className="px-0">
                 <div className="flex w-full items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.back()}
-                  >
+                  <Button type="button" variant="outline" onClick={() => router.back()}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Supplier
                   </Button>
                 </div>

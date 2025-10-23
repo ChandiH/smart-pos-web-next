@@ -1,63 +1,31 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Toast } from "@/components/ui";
-import { getProductsBySupplier } from "@/services/productService";
-import type { Product, Supplier, Identifier } from "@/services/types";
-import { getImageUrl } from "@/services/imageHandler";
-
-type SortDirection = "asc" | "desc";
-
-type SupplierProfileState = Supplier & {
-  supplier_name?: string;
-  supplier_email?: string;
-  supplier_phone?: string | number;
-  supplier_address?: string;
-  supplier_contact?: string;
-  [key: string]: unknown;
-};
-
-type SupplierProduct = Product & {
-  category_name?: string;
-  product_image?: string[] | string;
-  image?: string[] | string;
-};
+import { getSupplier } from "@/services/supplierService";
+import { Product, Supplier, SupplierWithProducts } from "@/types/prisma-types";
+import { SortDirection } from "@/types/common-types";
 
 type SortColumn = {
-  path: keyof SupplierProduct | "category_name";
+  path: keyof Product | "category_name";
   order: SortDirection;
 };
 
 const productColumns: {
-  key: keyof SupplierProduct | "image";
+  key: keyof Product | "product_barcode";
   label: string;
   path?: SortColumn["path"];
   sortable?: boolean;
   align?: "left" | "right";
 }[] = [
-  { key: "image", label: "", align: "left" },
   { key: "product_name", label: "Name", path: "product_name", sortable: true },
-  {
-    key: "category_name",
-    label: "Category",
-    path: "category_name",
-    sortable: true,
-  },
   {
     key: "buying_price",
     label: "Buying Price",
@@ -74,68 +42,40 @@ const productColumns: {
 
 const SupplierProfile = () => {
   const router = useRouter();
-  const [supplier, setSupplier] = useState<SupplierProfileState | null>(null);
-  const [products, setProducts] = useState<SupplierProduct[]>([]);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const params = useParams<{ id?: string }>();
+  const supplierId = params?.id ?? "";
+  const [supplier, setSupplier] = useState<SupplierWithProducts | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>({
     path: "product_name",
     order: "asc",
   });
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const loadSupplier = () => {
-      const storedSupplier = window.sessionStorage.getItem("selectedSupplier");
-      if (!storedSupplier) {
-        router.replace("/suppliers");
-        setIsInitializing(false);
-        return;
-      }
-
-      try {
-        const parsedSupplier = JSON.parse(
-          storedSupplier
-        ) as SupplierProfileState;
-        setSupplier(parsedSupplier);
-      } catch (error) {
-        console.error("Failed to parse supplier from session storage", error);
-        router.replace("/suppliers");
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-
-    loadSupplier();
-  }, [router]);
-
-  useEffect(() => {
-    const supplierId =
-      supplier?.supplier_id ?? (supplier as Record<string, unknown>)?.id;
     if (!supplierId) {
+      router.back();
       return;
     }
 
-    const loadProducts = async () => {
+    const loadSupplier = async () => {
       try {
-        setIsLoadingProducts(true);
-        const { data } = await getProductsBySupplier(supplierId as Identifier);
-        setProducts(Array.isArray(data) ? (data as SupplierProduct[]) : []);
+        setIsLoading(true);
+        const { data } = await getSupplier({ supplier_id: Number(supplierId) });
+        setSupplier(data ?? null);
       } catch (error) {
         console.error("Failed to load supplier products", error);
         Toast.error("Unable to load products for this supplier.");
       } finally {
-        setIsLoadingProducts(false);
+        setIsLoading(false);
       }
     };
 
-    void loadProducts();
-  }, [supplier]);
+    void loadSupplier();
+  }, [router, supplierId]);
 
   const sortedProducts = useMemo(
-    () => orderBy(products, [sortColumn.path as string], [sortColumn.order]),
-    [products, sortColumn]
+    () => orderBy(supplier?.product, [sortColumn.path as string], [sortColumn.order]),
+    [supplier, sortColumn]
   );
 
   const handleSort = (path: SortColumn["path"]) => {
@@ -155,19 +95,13 @@ const SupplierProfile = () => {
     if (sortColumn.path !== column.path) {
       return <ArrowUpDown className="h-3.5 w-3.5" />;
     }
-    return sortColumn.order === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
+    return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   };
 
-  const getSupplierField = (
-    ...keys: (keyof SupplierProfileState | string)[]
-  ) => {
+  const getSupplierField = (...keys: (keyof Supplier | string)[]) => {
     if (!supplier) return undefined;
     for (const key of keys) {
-      const value = (supplier as Record<string, unknown>)[key];
+      const value = supplier[key as keyof Supplier];
       if (value !== undefined && value !== null && value !== "") {
         return value;
       }
@@ -175,7 +109,7 @@ const SupplierProfile = () => {
     return undefined;
   };
 
-  if (isInitializing) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32 text-muted-foreground">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -193,12 +127,8 @@ const SupplierProfile = () => {
       <Card>
         <CardHeader className="flex flex-col gap-2 border-b border-border md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">
-              Supplier Profile
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Detailed information for the selected supplier.
-            </p>
+            <CardTitle className="text-lg font-semibold">Supplier Profile</CardTitle>
+            <p className="text-sm text-muted-foreground">Detailed information for the selected supplier.</p>
           </div>
           <Button variant="outline" onClick={() => router.back()}>
             Go Back
@@ -209,50 +139,28 @@ const SupplierProfile = () => {
             <div>
               <p className="text-sm text-muted-foreground">Supplier Name</p>
               <p className="text-base font-medium">
-                {String(
-                  getSupplierField("supplier_name", "contact_person", "name") ??
-                    "Unnamed Supplier"
-                )}
+                {String(getSupplierField("supplier_name", "contact_person", "name") ?? "Unnamed Supplier")}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Email</p>
-              <p>
-                {String(
-                  getSupplierField("supplier_email", "email") ?? "Not provided"
-                )}
-              </p>
+              <p>{String(getSupplierField("supplier_email", "email") ?? "Not provided")}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Contact</p>
               <p>
-                {String(
-                  getSupplierField(
-                    "supplier_phone",
-                    "supplier_contact",
-                    "contact_number"
-                  ) ?? "Not provided"
-                )}
+                {String(getSupplierField("supplier_phone", "supplier_contact", "contact_number") ?? "Not provided")}
               </p>
             </div>
           </div>
           <div className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Address</p>
-              <p>
-                {String(
-                  getSupplierField("supplier_address", "address") ??
-                    "Not provided"
-                )}
-              </p>
+              <p>{String(getSupplierField("supplier_address", "address") ?? "Not provided")}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Supplier ID</p>
-              <p>
-                {String(
-                  getSupplierField("supplier_id", "id") ?? "Not available"
-                )}
-              </p>
+              <p>{String(getSupplierField("supplier_id", "id") ?? "Not available")}</p>
             </div>
           </div>
         </CardContent>
@@ -261,12 +169,8 @@ const SupplierProfile = () => {
       <Card>
         <CardHeader className="flex flex-col gap-2 border-b border-border md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">
-              Products ({sortedProducts.length})
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Products currently associated with this supplier.
-            </p>
+            <CardTitle className="text-lg font-semibold">Products ({sortedProducts.length})</CardTitle>
+            <p className="text-sm text-muted-foreground">Products currently associated with this supplier.</p>
           </div>
         </CardHeader>
         <CardContent>
@@ -278,11 +182,7 @@ const SupplierProfile = () => {
                     <TableHead
                       key={column.key}
                       className={column.sortable ? "cursor-pointer" : undefined}
-                      onClick={() =>
-                        column.sortable &&
-                        column.path &&
-                        handleSort(column.path)
-                      }
+                      onClick={() => column.sortable && column.path && handleSort(column.path)}
                     >
                       <span className="inline-flex items-center gap-1">
                         {column.label}
@@ -293,12 +193,9 @@ const SupplierProfile = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoadingProducts ? (
+                {isLoading ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={productColumns.length}
-                      className="py-10 text-center text-muted-foreground"
-                    >
+                    <TableCell colSpan={productColumns.length} className="py-10 text-center text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         Loading products…
@@ -306,51 +203,16 @@ const SupplierProfile = () => {
                     </TableCell>
                   </TableRow>
                 ) : sortedProducts.length > 0 ? (
-                  sortedProducts.map((product, index) => {
-                    const imageSource = Array.isArray(product.product_image)
-                      ? product.product_image[0]
-                      : Array.isArray(product.image)
-                      ? product.image[0]
-                      : typeof product.product_image === "string"
-                      ? product.product_image
-                      : typeof product.image === "string"
-                      ? product.image
-                      : undefined;
-
-                    return (
-                      <TableRow key={String(product.product_id ?? index)}>
-                        <TableCell className="w-[70px]">
-                          <div className="relative h-10 w-10 overflow-hidden rounded-md border">
-                            <Image
-                              src={
-                                imageSource
-                                  ? getImageUrl(imageSource)
-                                  : "https://placehold.co/80x80/png"
-                              }
-                              alt={product.product_name ?? "Product image"}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {product.product_name ?? "Unnamed"}
-                        </TableCell>
-                        <TableCell>{product.category_name ?? "—"}</TableCell>
-                        <TableCell>
-                          Rs. {Number(product.buying_price ?? 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell>{product.product_barcode ?? "—"}</TableCell>
-                      </TableRow>
-                    );
-                  })
+                  sortedProducts.map((product, index) => (
+                    <TableRow key={String(product.product_id ?? index)}>
+                      <TableCell className="font-medium">{product.product_name ?? "Unnamed"}</TableCell>
+                      <TableCell>Rs. {Number(product.buying_price ?? 0).toFixed(2)}</TableCell>
+                      <TableCell>{product.product_barcode ?? "—"}</TableCell>
+                    </TableRow>
+                  ))
                 ) : (
                   <TableRow>
-                    <TableCell
-                      colSpan={productColumns.length}
-                      className="py-10 text-center text-muted-foreground"
-                    >
+                    <TableCell colSpan={productColumns.length} className="py-10 text-center text-muted-foreground">
                       No products found for this supplier.
                     </TableCell>
                   </TableRow>

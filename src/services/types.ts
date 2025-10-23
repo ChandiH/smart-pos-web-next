@@ -41,16 +41,6 @@ export interface InventoryItem {
   [key: string]: unknown;
 }
 
-export interface Supplier {
-  supplier_id?: Identifier;
-  supplier_name?: string;
-  contact_person?: string;
-  contact_number?: string;
-  email?: string;
-  address?: string;
-  [key: string]: unknown;
-}
-
 export interface Employee {
   employee_id?: Identifier;
   employee_name?: string;
