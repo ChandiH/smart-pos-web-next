@@ -3,12 +3,11 @@
 import { useContext, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Minus, Plus } from "lucide-react";
-
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import ProductImages from "@/components/inventory/ProductImages";
 import UserContext from "@/context/UserContext";
 import { getAllBranches } from "@/services/branchService";
 import { getInventoryByProduct, updateInventory } from "@/services/inventoryService";
@@ -16,6 +15,7 @@ import { updateProductDiscount } from "@/services/productService";
 import type { Branch, Identifier } from "@/services/types";
 import { Toast } from "@/components/ui";
 import { ProductWithInventory, Inventory } from "@/types/prisma-types";
+import EditableDataTableDemo from "@/components/ui/composite/data-table-demo";
 
 type ExtendedUser = {
   branch_id?: Identifier;
@@ -184,75 +184,78 @@ const StockUpdateForm = () => {
   const productDescription = (product as ProductWithInventory).product_desc;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+    <div className="grid grid-cols-[440px_1fr] gap-6">
       <Card className="h-full">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Product Images</CardTitle>
+          <CardTitle className="text-lg font-semibold">{product.product_name ?? "Unnamed Product"}</CardTitle>
+          <p className="text-sm text-muted-foreground">{product.category?.category_name ?? "No category"}</p>
         </CardHeader>
         <CardContent>
-          <ProductImages images={product.product_image as string[] | string} />
-          <div className="mt-6 rounded-lg border">
-            <h3 className="px-4 py-3 text-sm font-semibold">Stock in other branches</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Branch</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {otherBranches.length === 0 ? (
+          <div className="space-y-4">
+            {productDescription && (
+              <div className="space-y-2 text-sm">
+                <h3 className="font-semibold">Description</h3>
+                <p className="text-muted-foreground">{productDescription}</p>
+              </div>
+            )}
+            <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+              <div className="flex flex-col gap-2">
+                <div>
+                  <span className="text-muted-foreground">Current stock:</span>
+                  <span className="ml-2 font-medium">
+                    {Number(product.inventory.find((item) => item.branch_id === user.branch_id)?.quantity ?? 0)} items
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Location:</span>
+                  <span className="ml-2 font-medium">{user.branch_name ?? "Current branch"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Last updated:</span>
+                  <span className="ml-2 font-medium">{product.updated_on ?? "Never"}</span>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg border">
+              <h3 className="px-4 py-3 text-sm font-semibold">Stock in other branches</h3>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={2} className="py-6 text-center text-sm text-muted-foreground">
-                      No additional branches found.
-                    </TableCell>
+                    <TableHead>Branch</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
                   </TableRow>
-                ) : (
-                  otherBranches.map((branch) => (
-                    <TableRow key={String(branch.branch_id)}>
-                      <TableCell>{branch.branch_name ?? "Branch"}</TableCell>
-                      <TableCell className="text-right">{branch.quantity}</TableCell>
+                </TableHeader>
+                <TableBody>
+                  {otherBranches.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={2} className="py-6 text-center text-sm text-muted-foreground">
+                        No additional branches found.
+                      </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    otherBranches.map((branch) => (
+                      <TableRow key={String(branch.branch_id)}>
+                        <TableCell>{branch.branch_name ?? "Branch"}</TableCell>
+                        <TableCell className="text-right">{branch.quantity}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <Image
+              src={"/assets/images/placeholder/product.png"}
+              alt={"Product Image"}
+              width={200}
+              height={200}
+              className="mx-auto rounded-md border object-contain"
+            />
           </div>
         </CardContent>
       </Card>
 
       <Card className="h-full">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">{product.product_name ?? "Unnamed Product"}</CardTitle>
-          <p className="text-sm text-muted-foreground">{product.category?.category_name ?? "No category"}</p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="rounded-lg border bg-muted/40 p-4 text-sm">
-            <div className="flex flex-col gap-2">
-              <div>
-                <span className="text-muted-foreground">Current stock:</span>
-                <span className="ml-2 font-medium">
-                  {Number(product.inventory.find((item) => item.branch_id === user.branch_id)?.quantity ?? 0)} items
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Location:</span>
-                <span className="ml-2 font-medium">{user.branch_name ?? "Current branch"}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Last updated:</span>
-                <span className="ml-2 font-medium">{product.updated_on ?? "Never"}</span>
-              </div>
-            </div>
-          </div>
-
-          {productDescription && (
-            <div className="space-y-2 text-sm">
-              <h3 className="font-semibold">Description</h3>
-              <p className="text-muted-foreground">{productDescription}</p>
-            </div>
-          )}
-
           <div className="grid gap-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Buying price</span>
@@ -267,7 +270,9 @@ const StockUpdateForm = () => {
               <span className="font-medium">Rs. {Number(product.discount ?? 0).toFixed(2)}</span>
             </div>
           </div>
-
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <EditableDataTableDemo />
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <div className="space-y-2">

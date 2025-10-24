@@ -58,6 +58,15 @@ export type Product = {
   updated_on: ISODateString | null;
 };
 
+export type Product_Variant = {
+  variant_id: UUID;
+  product_id: UUID;
+  label: string;
+  buying_price: MoneyString;
+  retail_price: MoneyString;
+  discount: MoneyString | null;
+};
+
 export type Inventory = {
   product_id: UUID;
   branch_id: UUID;
@@ -205,11 +214,15 @@ export type SupplierWithProducts = Supplier & {
   product: Product[];
 };
 
-export type ProductWithCategory = Product & {
+export type ProductWithVariants = Product & {
+  variants: Product_Variant[];
+};
+
+export type ProductWithCategory = ProductWithVariants & {
   category?: Category;
 };
 
-export type ProductDetails = Product & {
+export type ProductDetails = ProductWithVariants & {
   category?: Category;
   supplier?: Supplier;
   inventory: Inventory[];
