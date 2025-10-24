@@ -48,11 +48,9 @@ export type Product = {
   product_desc: string | null;
   category_id: number;
   product_image: string[];
-  buying_price: MoneyString;
-  retail_price: MoneyString;
-  discount: MoneyString | null;
   supplier_id: number;
   product_barcode: string;
+  stock_type: string | null;
   removed: boolean | null;
   created_at: ISODateString | null;
   updated_on: ISODateString | null;
@@ -88,6 +86,7 @@ export type Customer = {
   customer_address: string | null;
   visit_count: number | null;
   rewards_points: MoneyString | null;
+  credits: MoneyString | null;
   created_at: ISODateString | null;
 };
 
@@ -188,10 +187,7 @@ export interface CartItemWithProduct {
   sub_total_amount: MoneyString | null;
   created_at: ISODateString | null;
 
-  product: Pick<
-    Product,
-    "product_id" | "product_name" | "retail_price" | "discount" | "product_barcode" | "product_image"
-  >;
+  product: Pick<Product, "product_id" | "product_name" | "product_barcode" | "product_image">;
 }
 
 /** A sales order payload typically shown in history with line items and references */

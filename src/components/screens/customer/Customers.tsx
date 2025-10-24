@@ -174,6 +174,12 @@ const Customers = () => {
                     {renderSortIcon("customer_email")}
                   </span>
                 </TableHead>
+                <TableHead className="cursor-pointer text-right" onClick={() => handleSort("credits")}>
+                  <span className="inline-flex items-center gap-1 justify-end">
+                    Credits
+                    {renderSortIcon("credits")}
+                  </span>
+                </TableHead>
                 <TableHead className="cursor-pointer text-right" onClick={() => handleSort("rewards_points")}>
                   <span className="inline-flex items-center gap-1 justify-end">
                     Loyalty Points
@@ -198,6 +204,7 @@ const Customers = () => {
                     <TableCell className="font-medium">{customer.customer_name ?? "Unnamed"}</TableCell>
                     <TableCell>{customer.customer_phone ?? "Not provided"}</TableCell>
                     <TableCell>{customer.customer_email ?? "Not provided"}</TableCell>
+                    <TableCell className="text-right">{Number(customer.credits ?? 0).toFixed(2)}</TableCell>
                     <TableCell className="text-right">{Number(customer.rewards_points ?? 0).toFixed(2)}</TableCell>
                   </TableRow>
                 ))

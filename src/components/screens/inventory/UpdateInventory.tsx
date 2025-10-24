@@ -63,8 +63,8 @@ const UpdateInventory = () => {
     const inventoryRecord = product.inventory.find((inv) => inv.branch_id === branchId);
     if (!inventoryRecord) return true;
     const { quantity, reorder_level } = inventoryRecord;
-    if (!reorder_level) return quantity === 0;
-    if (quantity === null) return true;
+    if (!reorder_level || reorder_level === 0) return true;
+    if (!quantity || quantity === 0) return true;
     return quantity <= reorder_level;
   };
 
@@ -209,10 +209,11 @@ const UpdateInventory = () => {
                   </span>
                 </TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Buying Price</TableHead>
-                <TableHead>Retail Price</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Updated On</TableHead>
+                <TableHead className="text-center">Variants</TableHead>
+                <TableHead className="text-center">Buying Price</TableHead>
+                <TableHead className="text-center">Retail Price</TableHead>
+                <TableHead className="text-center">Stock</TableHead>
+                <TableHead className="text-right">Updated On</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -233,14 +234,19 @@ const UpdateInventory = () => {
                     <TableRow key={String(product.product_id ?? index)}>
                       <TableCell className="font-medium">{product.product_name ?? "Unnamed"}</TableCell>
                       <TableCell>{product.category?.category_name ?? "—"}</TableCell>
-                      <TableCell>Rs. {Number(product.buying_price ?? 0).toFixed(2)}</TableCell>
-                      <TableCell>Rs. {Number(product.retail_price ?? 0).toFixed(2)}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">{product.variants.length}</TableCell>
+                      <TableCell className="text-center">
+                        Rs. {Number(product.variants[0]?.buying_price ?? 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        Rs. {Number(product.variants[0]?.retail_price ?? 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-center">
                         <span className={isLow ? "font-semibold text-destructive" : ""}>
                           {Number(product.inventory.find((item) => item.branch_id === branchId)?.quantity ?? 0)}
                         </span>
                       </TableCell>
-                      <TableCell>{product.updated_on ?? "Never"}</TableCell>
+                      <TableCell className="text-right">{product.updated_on ?? "Never"}</TableCell>
                       <TableCell className="text-right">
                         <Button size="sm" variant="outline" onClick={() => handleSelectProduct(product)}>
                           Update

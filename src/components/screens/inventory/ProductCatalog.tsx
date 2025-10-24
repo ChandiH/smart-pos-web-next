@@ -175,8 +175,6 @@ const ProductCatalog = () => {
                   </span>
                 </TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead>Buying Price</TableHead>
-                <TableHead>Retail Price</TableHead>
                 <TableHead>Barcode</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -196,8 +194,6 @@ const ProductCatalog = () => {
                   <TableRow key={String(product.product_id ?? index)} className="align-middle">
                     <TableCell className="font-medium">{product.product_name ?? "Unnamed"}</TableCell>
                     <TableCell>{product.category?.category_name ?? "—"}</TableCell>
-                    <TableCell>Rs. {Number(product.buying_price ?? 0).toFixed(2)}</TableCell>
-                    <TableCell>Rs. {Number(product.retail_price ?? 0).toFixed(2)}</TableCell>
                     <TableCell>{product.product_barcode ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       <Button
