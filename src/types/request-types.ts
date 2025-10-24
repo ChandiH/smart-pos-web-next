@@ -6,7 +6,10 @@ export type SupplierAddRequest = Omit<Supplier, "supplier_id">;
 
 // Request types for Customer operations
 export type CustomerGetRequest = Pick<Customer, "customer_id">;
-export type CustomerAddRequest = Omit<Customer, "customer_id" | "visit_count" | "created_at" | "rewards_points">;
+export type CustomerAddRequest = Omit<
+  Customer,
+  "customer_id" | "visit_count" | "created_at" | "rewards_points" | "credits"
+>;
 
 // Request types for Product operations
 export type ProductGetRequest = Pick<Product, "product_id">;

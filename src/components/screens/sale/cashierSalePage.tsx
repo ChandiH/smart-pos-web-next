@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  Dispatch,
-  SetStateAction,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
 
@@ -20,35 +11,32 @@ import SaleStockTable from "@/components/sale/saleStockTable";
 import { getCustomers } from "@/services/customerService";
 import { getInventoryByBranch } from "@/services/inventoryService";
 import { getProducts } from "@/services/productService";
+import { getRewardsPointsPercentage, submitOrder } from "@/services/orderService";
 import {
-  getRewardsPointsPercentage,
-  submitOrder,
-} from "@/services/orderService";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Toast } from "@/components/ui";
+  Input,
+  Label,
+  Separator,
+  Toast,
+} from "@/components/ui";
 import useBarcodeScanner from "@/hooks/useBarcodeScanner";
-import ReceiptPrinter, {
-  ReceiptBill,
-  ReceiptPrinterHandle,
-} from "@/components/print/ReceiptPrinter";
-
-type SortOrder = "asc" | "desc";
+import ReceiptPrinter, { ReceiptBill, ReceiptPrinterHandle } from "@/components/print/ReceiptPrinter";
+import { Customer } from "@/types/prisma-types";
+import { SortDirection } from "@/types/common-types";
 
 type SortColumn = {
   path: string;
-  order: SortOrder;
+  order: SortDirection;
 };
 
 type CashierUser = {
@@ -88,24 +76,16 @@ type InventoryItem = RawInventoryItem & {
   quantity: number;
 };
 
-type RawCustomer = {
-  customer_id?: string;
-  customer_name: string;
-  customer_phone?: string;
-  customer_contact?: string;
-  rewards_points: number;
-  [key: string]: unknown;
-};
-
-type Customer = RawCustomer & {
-  customer_phone?: string;
-  customer_contact?: string;
-};
-
 const guestCustomer: Customer = {
+  customer_id: 0,
   customer_name: "Guest Customer",
-  customer_contact: "0000000000",
-  rewards_points: 0,
+  customer_email: "",
+  customer_phone: "0000000000",
+  customer_address: "",
+  rewards_points: "0",
+  credits: "0",
+  visit_count: 0,
+  created_at: new Date().toDateString(),
 };
 
 const paymentMethods: {
@@ -119,8 +99,7 @@ const paymentMethods: {
   { label: "Loyalty", value: "loyalty" },
 ];
 
-const formatCurrency = (value: number) =>
-  `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
+const formatCurrency = (value: number) => `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
 
 const CashierSalePage = () => {
   const router = useRouter();
@@ -163,31 +142,14 @@ const CashierSalePage = () => {
     if (!branchId) return;
 
     try {
-      const [
-        { data: rewards },
-        { data: customerList },
-        { data: inventory },
-        { data: productList },
-      ] = await Promise.all([
-        getRewardsPointsPercentage(),
-        getCustomers(),
-        getInventoryByBranch(branchId),
-        getProducts(),
-      ]);
+      const [{ data: rewards }, { data: customerList }, { data: inventory }, { data: productList }] = await Promise.all(
+        [getRewardsPointsPercentage(), getCustomers(), getInventoryByBranch(branchId), getProducts()]
+      );
 
-      const percentage =
-        Array.isArray(rewards) && rewards.length > 0
-          ? Number(rewards[0]?.variable_value ?? 0)
-          : 0;
+      setCustomers(customerList);
+
+      const percentage = Array.isArray(rewards) && rewards.length > 0 ? Number(rewards[0]?.variable_value ?? 0) : 0;
       setRewardsPointsPercentage(Number.isFinite(percentage) ? percentage : 0);
-
-      const normalizedCustomers: Customer[] = Array.isArray(customerList)
-        ? (customerList as RawCustomer[]).map((item) => ({
-            ...item,
-            rewards_points: Number(item.rewards_points ?? 0),
-          }))
-        : [];
-      setCustomers(normalizedCustomers);
 
       const inventoryMap: InventoryItem[] = Array.isArray(inventory)
         ? (inventory as RawInventoryItem[]).map((item) => ({
@@ -195,14 +157,12 @@ const CashierSalePage = () => {
             quantity: Number(item.quantity ?? 0),
           }))
         : [];
-      const availableProducts = (
-        Array.isArray(productList) ? (productList as RawProduct[]) : []
-      ).filter((product) => !product.removed);
+      const availableProducts = (Array.isArray(productList) ? (productList as RawProduct[]) : []).filter(
+        (product) => !product.removed
+      );
 
       const updatedInventory = availableProducts.map((product) => {
-        const stock = inventoryMap.find(
-          (item) => item.product_id === product.product_id
-        );
+        const stock = inventoryMap.find((item) => item.product_id === product.product_id);
 
         const quantity = Number(stock?.quantity ?? 0);
         const retailPrice = Number(product.retail_price ?? 0);
@@ -233,8 +193,7 @@ const CashierSalePage = () => {
     enabled: isCustomerSearchFocused && customers.length > 0,
     items: customers,
     getBarcode: (item) => {
-      const rawValue =
-        item.customer_contact ?? item.customer_phone ?? item.customer_id;
+      const rawValue = item.customer_phone ?? item.customer_id;
       if (rawValue === undefined || rawValue === null) {
         return undefined;
       }
@@ -248,8 +207,7 @@ const CashierSalePage = () => {
     },
     onScanSuccess: (matchedCustomer, scannedBarcode) => {
       const normalizedBarcode = scannedBarcode.trim();
-      const displayValue =
-        matchedCustomer.customer_name?.trim() || normalizedBarcode;
+      const displayValue = matchedCustomer.customer_name?.trim() || normalizedBarcode;
       console.log("[BarcodeScanner][Customer] Match", {
         barcode: normalizedBarcode,
         customerId: matchedCustomer.customer_id,
@@ -321,17 +279,10 @@ const CashierSalePage = () => {
     const lowerQuery = normalizedQuery.toLowerCase();
 
     const filteredCustomer = customers.find((item) => {
-      const matchesName = item.customer_name
-        ?.toLowerCase()
-        .startsWith(lowerQuery);
-      const matchesPhone =
-        item.customer_phone &&
-        String(item.customer_phone).trim() === normalizedQuery;
-      const matchesContact =
-        item.customer_contact &&
-        String(item.customer_contact).trim() === normalizedQuery;
+      const matchesName = item.customer_name?.toLowerCase().startsWith(lowerQuery);
+      const matchesPhone = item.customer_phone && String(item.customer_phone).trim() === normalizedQuery;
 
-      return Boolean(matchesName || matchesPhone || matchesContact);
+      return Boolean(matchesName || matchesPhone);
     });
 
     setCustomer(filteredCustomer ?? { ...guestCustomer });
@@ -341,9 +292,7 @@ const CashierSalePage = () => {
     setProductSearchQuery("");
     setCart((prevCart: Product[]) => {
       const cartCopy = [...prevCart];
-      const existingProductIndex = cartCopy.findIndex(
-        (item) => item.product_id === product.product_id
-      );
+      const existingProductIndex = cartCopy.findIndex((item) => item.product_id === product.product_id);
 
       if (existingProductIndex !== -1) {
         const existingProduct = cartCopy[existingProductIndex];
@@ -360,36 +309,21 @@ const CashierSalePage = () => {
   };
 
   const totals = useMemo(() => {
-    const quantity = cart.reduce(
-      (acc, product) => acc + (product.quantity ?? 0),
-      0
-    );
-    const subtotal = cart.reduce(
-      (acc, product) =>
-        acc + (product.quantity ?? 0) * (product.retail_price ?? 0),
-      0
-    );
+    const quantity = cart.reduce((acc, product) => acc + (product.quantity ?? 0), 0);
+    const subtotal = cart.reduce((acc, product) => acc + (product.quantity ?? 0) * (product.retail_price ?? 0), 0);
 
-    const discount = cart.reduce(
-      (acc, product) =>
-        acc + (product.quantity ?? 0) * Number(product.discount ?? 0),
-      0
-    );
+    const discount = cart.reduce((acc, product) => acc + (product.quantity ?? 0) * Number(product.discount ?? 0), 0);
 
     const profit = cart.reduce((acc, product) => {
       const totalProfit =
-        (product.quantity ?? 0) *
-          ((product.retail_price ?? 0) - (product.buying_price ?? 0)) -
-        (product.discount ?? 0);
+        (product.quantity ?? 0) * ((product.retail_price ?? 0) - (product.buying_price ?? 0)) - (product.discount ?? 0);
       return acc + totalProfit;
     }, 0);
 
     const subtotalRounded = Number(subtotal.toFixed(2));
     const discountRounded = Number(discount.toFixed(2));
     const profitRounded = Number(profit.toFixed(2));
-    const grandTotal = Number(
-      Math.max(subtotalRounded - discountRounded, 0).toFixed(2)
-    );
+    const grandTotal = Number(Math.max(subtotalRounded - discountRounded, 0).toFixed(2));
 
     return {
       quantity,
@@ -474,8 +408,7 @@ const CashierSalePage = () => {
 
       Toast.promise(promise, {
         success: "Order placed",
-        error: (error) =>
-          error.response?.data?.error ?? "Failed to place order",
+        error: (error) => error.response?.data?.error ?? "Failed to place order",
       });
 
       await promise;
@@ -495,9 +428,7 @@ const CashierSalePage = () => {
 
   const isCashPayment = paymentMethod === "cash" || paymentMethod === "loyalty";
   const parsedPaymentDetails = Number(paymentDetails) || 0;
-  const changeDue = isCashPayment
-    ? parsedPaymentDetails - totals.grandTotal
-    : 0;
+  const changeDue = isCashPayment ? parsedPaymentDetails - totals.grandTotal : 0;
   const isChangeNegative = isCashPayment && changeDue < 0;
 
   const paymentInputType = isCashPayment ? "number" : "text";
@@ -530,26 +461,19 @@ const CashierSalePage = () => {
       return null;
     }
 
-    const isGuestCustomer =
-      customer.customer_name === guestCustomer.customer_name;
+    const isGuestCustomer = customer.customer_name === guestCustomer.customer_name;
 
-    const cashReceived = isCashPayment
-      ? Math.max(parsedPaymentDetails, 0)
-      : undefined;
+    const cashReceived = isCashPayment ? Math.max(parsedPaymentDetails, 0) : undefined;
 
     const branchLabel =
-      typedUser?.branch_id !== undefined && typedUser.branch_id !== null
-        ? `Branch ${typedUser.branch_id}`
-        : undefined;
+      typedUser?.branch_id !== undefined && typedUser.branch_id !== null ? `Branch ${typedUser.branch_id}` : undefined;
 
     return {
       shopName: branchLabel ?? "Smart POS",
       address: undefined,
       phone: undefined,
       customer: customer.customer_name,
-      loyaltyPoints: isGuestCustomer
-        ? undefined
-        : Number(customer.rewards_points ?? 0),
+      loyaltyPoints: isGuestCustomer ? undefined : Number(customer.rewards_points ?? 0),
       loyaltyEarned: rewardsPoints > 0 ? rewardsPoints : undefined,
       credit: undefined,
       invoiceNo: undefined,
@@ -605,12 +529,7 @@ const CashierSalePage = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold">Cart</CardTitle>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleClearCart}
-                disabled={cart.length === 0}
-              >
+              <Button variant="destructive" size="sm" onClick={handleClearCart} disabled={cart.length === 0}>
                 Clear Cart
               </Button>
             </CardHeader>
@@ -623,9 +542,7 @@ const CashierSalePage = () => {
         <div className="flex-1 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg font-semibold">
-                Customer Info
-              </CardTitle>
+              <CardTitle className="text-lg font-semibold">Customer Info</CardTitle>
               <Button size="sm" onClick={handleAddCustomer}>
                 Add New Customer
               </Button>
@@ -654,17 +571,15 @@ const CashierSalePage = () => {
                   <>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Contact</span>
-                      <span>
-                        {customer.customer_phone ??
-                          customer.customer_contact ??
-                          "-"}
-                      </span>
+                      <span>{customer.customer_phone ?? "-"}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        Total Loyalty Points
-                      </span>
+                      <span className="text-muted-foreground">Total Loyalty Points</span>
                       <span>{customer.rewards_points}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Credits</span>
+                      <span>Rs. {customer.credits}</span>
                     </div>
                   </>
                 )}
@@ -695,9 +610,7 @@ const CashierSalePage = () => {
                   <span>{formatCurrency(totals.grandTotal)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    New Loyalty Points
-                  </span>
+                  <span className="text-muted-foreground">New Loyalty Points</span>
                   <span>{rewardsPoints.toFixed(2)}</span>
                 </div>
               </div>
@@ -706,9 +619,7 @@ const CashierSalePage = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                Payment Method
-              </CardTitle>
+              <CardTitle className="text-lg font-semibold">Payment Method</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
@@ -725,15 +636,11 @@ const CashierSalePage = () => {
                 ))}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="payment-details">
-                  {isCashPayment ? "Cash Given" : "Reference Number"}
-                </Label>
+                <Label htmlFor="payment-details">{isCashPayment ? "Cash Given" : "Reference Number"}</Label>
                 <Input
                   id="payment-details"
                   type={paymentInputType}
-                  placeholder={
-                    isCashPayment ? "Enter amount received" : "Enter reference"
-                  }
+                  placeholder={isCashPayment ? "Enter amount received" : "Enter reference"}
                   value={paymentDetails}
                   onChange={(event) => setPaymentDetails(event.target.value)}
                 />
@@ -750,10 +657,7 @@ const CashierSalePage = () => {
               </div>
               <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    disabled={!validateOrder()}
-                    className="w-full py-6 text-lg font-semibold"
-                  >
+                  <Button disabled={!validateOrder()} className="w-full py-6 text-lg font-semibold">
                     Bill
                   </Button>
                 </DialogTrigger>
@@ -767,12 +671,9 @@ const CashierSalePage = () => {
                         <span className="text-muted-foreground">Cashier</span>
                         <span>{typedUser?.employee_name ?? "N/A"}</span>
                       </div>
-                      {customer.customer_name !==
-                        guestCustomer.customer_name && (
+                      {customer.customer_name !== guestCustomer.customer_name && (
                         <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">
-                            Customer
-                          </span>
+                          <span className="text-muted-foreground">Customer</span>
                           <span>{customer.customer_name}</span>
                         </div>
                       )}
@@ -780,9 +681,7 @@ const CashierSalePage = () => {
                     <Separator />
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          Total Quantity
-                        </span>
+                        <span className="text-muted-foreground">Total Quantity</span>
                         <span>{totals.quantity}</span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -798,22 +697,16 @@ const CashierSalePage = () => {
                         <span>{formatCurrency(totals.grandTotal)}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          New Loyalty Points
-                        </span>
+                        <span className="text-muted-foreground">New Loyalty Points</span>
                         <span>{rewardsPoints.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          Payment Method
-                        </span>
+                        <span className="text-muted-foreground">Payment Method</span>
                         <span>{paymentMethod}</span>
                       </div>
                       {isCashPayment && (
                         <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">
-                            Cash Given
-                          </span>
+                          <span className="text-muted-foreground">Cash Given</span>
                           <span>{formatCurrency(parsedPaymentDetails)}</span>
                         </div>
                       )}
@@ -826,9 +719,7 @@ const CashierSalePage = () => {
                           <span>{formatCurrency(changeDue)}</span>
                         </div>
                         {isChangeNegative && (
-                          <p className="text-sm text-destructive">
-                            Received amount is less than the grand total.
-                          </p>
+                          <p className="text-sm text-destructive">Received amount is less than the grand total.</p>
                         )}
                       </>
                     )}
@@ -845,11 +736,7 @@ const CashierSalePage = () => {
                     >
                       Print Receipt
                     </Button>
-                    <Button
-                      type="button"
-                      onClick={handlePlaceOrder}
-                      disabled={isChangeNegative}
-                    >
+                    <Button type="button" onClick={handlePlaceOrder} disabled={isChangeNegative}>
                       Get Next Order
                     </Button>
                   </DialogFooter>

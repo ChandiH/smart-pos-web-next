@@ -1,5 +1,5 @@
-import { Customer } from "@/types/prisma-types";
 import http from "./httpService";
+import { Customer } from "@/types/prisma-types";
 import { CustomerAddRequest, CustomerGetRequest } from "@/types/request-types";
 import { API_RESPONSE } from "@/types/common-types";
 
