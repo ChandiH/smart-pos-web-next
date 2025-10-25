@@ -1,16 +1,15 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useMemo, useRef, useState, Dispatch, SetStateAction } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
 
-import CartContext from "@/context/CartContext";
+import CartContext, { ProductCartItem } from "@/context/CartContext";
 import UserContext from "@/context/UserContext";
 import SaleCartTable from "@/components/sale/saleCartTable";
 import SaleStockTable from "@/components/sale/saleStockTable";
 import { getCustomers } from "@/services/customerService";
-import { getInventoryByBranch } from "@/services/inventoryService";
-import { getProducts } from "@/services/productService";
+import { getInventoryWithProduct } from "@/services/inventoryService";
 import { getRewardsPointsPercentage, submitOrder } from "@/services/orderService";
 import {
   Button,
@@ -31,8 +30,9 @@ import {
 } from "@/components/ui";
 import useBarcodeScanner from "@/hooks/useBarcodeScanner";
 import ReceiptPrinter, { ReceiptBill, ReceiptPrinterHandle } from "@/components/print/ReceiptPrinter";
-import { Customer } from "@/types/prisma-types";
+import { Customer, Product_Variant, ProductDetails } from "@/types/prisma-types";
 import { SortDirection } from "@/types/common-types";
+import VariantSelectionModel from "@/components/sale/VariantSelectionModel";
 
 type SortColumn = {
   path: string;
@@ -47,34 +47,6 @@ type CashierUser = {
 };
 
 type PaymentMethod = "cash" | "credit/debit" | "mobile" | "loyalty";
-
-type RawProduct = {
-  product_id: string;
-  product_name: string;
-  product_barcode?: string;
-  removed?: boolean;
-  retail_price?: number;
-  buying_price?: number;
-  discount?: number;
-  [key: string]: unknown;
-};
-
-type Product = RawProduct & {
-  quantity: number;
-  discount: number;
-  retail_price: number;
-  buying_price: number;
-};
-
-type RawInventoryItem = {
-  product_id: string;
-  quantity?: number;
-  [key: string]: unknown;
-};
-
-type InventoryItem = RawInventoryItem & {
-  quantity: number;
-};
 
 const guestCustomer: Customer = {
   customer_id: 0,
@@ -104,15 +76,13 @@ const formatCurrency = (value: number) => `Rs. ${Number.isFinite(value) ? value.
 const CashierSalePage = () => {
   const router = useRouter();
   const { currentUser } = useContext(UserContext);
-  const { cart, setCart } = useContext(CartContext) as {
-    cart: Product[];
-    setCart: Dispatch<SetStateAction<Product[]>>;
-  };
+  const { cart, setCart } = useContext(CartContext);
 
   const [sortColumn, setSortColumn] = useState<SortColumn>({
     path: "product_name",
     order: "asc",
   });
+
   const cartSortColumn: SortColumn = useMemo(
     () => ({
       path: "product_name",
@@ -121,7 +91,7 @@ const CashierSalePage = () => {
     []
   );
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductDetails[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customer, setCustomer] = useState<Customer>({ ...guestCustomer });
   const [productSearchQuery, setProductSearchQuery] = useState("");
@@ -131,6 +101,8 @@ const CashierSalePage = () => {
   const [paymentDetails, setPaymentDetails] = useState("");
   const [rewardsPointsPercentage, setRewardsPointsPercentage] = useState(0);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [variantModel, setVariantModel] = useState<boolean>(false);
+  const [pendingVariantProduct, setPendingVariantProduct] = useState<ProductDetails | null>(null);
 
   const customerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const receiptPrinterRef = useRef<ReceiptPrinterHandle | null>(null);
@@ -142,43 +114,18 @@ const CashierSalePage = () => {
     if (!branchId) return;
 
     try {
-      const [{ data: rewards }, { data: customerList }, { data: inventory }, { data: productList }] = await Promise.all(
-        [getRewardsPointsPercentage(), getCustomers(), getInventoryByBranch(branchId), getProducts()]
-      );
+      const [{ data: rewards }, { data: customerList }, { data: productList }] = await Promise.all([
+        getRewardsPointsPercentage(),
+        getCustomers(),
+        getInventoryWithProduct(),
+      ]);
 
+      const availableProducts = (Array.isArray(productList) ? productList : []).filter((product) => !product.removed);
+      setProducts(availableProducts);
       setCustomers(customerList);
 
       const percentage = Array.isArray(rewards) && rewards.length > 0 ? Number(rewards[0]?.variable_value ?? 0) : 0;
       setRewardsPointsPercentage(Number.isFinite(percentage) ? percentage : 0);
-
-      const inventoryMap: InventoryItem[] = Array.isArray(inventory)
-        ? (inventory as RawInventoryItem[]).map((item) => ({
-            ...item,
-            quantity: Number(item.quantity ?? 0),
-          }))
-        : [];
-      const availableProducts = (Array.isArray(productList) ? (productList as RawProduct[]) : []).filter(
-        (product) => !product.removed
-      );
-
-      const updatedInventory = availableProducts.map((product) => {
-        const stock = inventoryMap.find((item) => item.product_id === product.product_id);
-
-        const quantity = Number(stock?.quantity ?? 0);
-        const retailPrice = Number(product.retail_price ?? 0);
-        const buyingPrice = Number(product.buying_price ?? 0);
-        const discount = Number(product.discount ?? 0);
-
-        return {
-          ...product,
-          quantity: Number.isFinite(quantity) ? quantity : 0,
-          retail_price: Number.isFinite(retailPrice) ? retailPrice : 0,
-          buying_price: Number.isFinite(buyingPrice) ? buyingPrice : 0,
-          discount: Number.isFinite(discount) ? discount : 0,
-        };
-      });
-
-      setProducts(updatedInventory);
     } catch (error) {
       console.error("Failed to load cashier data", error);
       Toast.error("Unable to load cashier data. Please try again.");
@@ -227,7 +174,7 @@ const CashierSalePage = () => {
     },
   });
 
-  useBarcodeScanner<Product>({
+  useBarcodeScanner<ProductDetails>({
     enabled: !isCustomerSearchFocused && products.length > 0,
     items: products,
     getBarcode: (item) => {
@@ -248,7 +195,7 @@ const CashierSalePage = () => {
         barcode: matchedProduct.product_barcode,
         productId: matchedProduct.product_id,
       });
-      onAddToCart(matchedProduct);
+      handleVariantSelection(matchedProduct);
     },
     onScanFailure: (scannedBarcode) => {
       const normalizedBarcode = scannedBarcode.trim();
@@ -288,11 +235,12 @@ const CashierSalePage = () => {
     setCustomer(filteredCustomer ?? { ...guestCustomer });
   };
 
-  const onAddToCart = (product: Product) => {
+  const onAddToCart = (productVariant: Product_Variant) => {
     setProductSearchQuery("");
-    setCart((prevCart: Product[]) => {
+    setCart((prevCart: ProductCartItem[]) => {
       const cartCopy = [...prevCart];
-      const existingProductIndex = cartCopy.findIndex((item) => item.product_id === product.product_id);
+      const productIndex = products.findIndex((p) => p.product_id === productVariant.product_id);
+      const existingProductIndex = cartCopy.findIndex((item) => item.product_id === productVariant.product_id);
 
       if (existingProductIndex !== -1) {
         const existingProduct = cartCopy[existingProductIndex];
@@ -303,20 +251,23 @@ const CashierSalePage = () => {
         return cartCopy;
       }
 
-      cartCopy.push({ ...product, quantity: 1 });
+      cartCopy.push({ ...products[productIndex], quantity: 1, variant: productVariant });
       return cartCopy;
     });
+    setPendingVariantProduct(null);
+    setVariantModel(false);
   };
 
   const totals = useMemo(() => {
-    const quantity = cart.reduce((acc, product) => acc + (product.quantity ?? 0), 0);
-    const subtotal = cart.reduce((acc, product) => acc + (product.quantity ?? 0) * (product.retail_price ?? 0), 0);
+    const quantity = cart.reduce((acc, item) => acc + (item.quantity ?? 0), 0);
+    const subtotal = cart.reduce((acc, item) => acc + (item.quantity ?? 0) * Number(item.variant.retail_price ?? 0), 0);
 
-    const discount = cart.reduce((acc, product) => acc + (product.quantity ?? 0) * Number(product.discount ?? 0), 0);
+    const discount = cart.reduce((acc, item) => acc + (item.quantity ?? 0) * Number(item.variant.discount ?? 0), 0);
 
-    const profit = cart.reduce((acc, product) => {
+    const profit = cart.reduce((acc, item) => {
       const totalProfit =
-        (product.quantity ?? 0) * ((product.retail_price ?? 0) - (product.buying_price ?? 0)) - (product.discount ?? 0);
+        (item.quantity ?? 0) * (Number(item.variant.retail_price ?? 0) - Number(item.variant.buying_price ?? 0)) -
+        Number(item.variant.discount ?? 0);
       return acc + totalProfit;
     }, 0);
 
@@ -345,7 +296,7 @@ const CashierSalePage = () => {
 
   const filteredProducts = useMemo(() => {
     if (!productSearchQuery) {
-      return [] as Product[];
+      return [] as ProductDetails[];
     }
 
     const query = productSearchQuery.trim().toLowerCase();
@@ -444,8 +395,8 @@ const CashierSalePage = () => {
         if (quantity <= 0) {
           return null;
         }
-        const unitPrice = Number(product.retail_price ?? 0);
-        const discountPerUnit = Number(product.discount ?? 0);
+        const unitPrice = Number(product.variant.retail_price ?? 0);
+        const discountPerUnit = Number(product.variant.discount ?? 0);
         const discountedPrice = Math.max(unitPrice - discountPerUnit, 0);
 
         return {
@@ -497,6 +448,19 @@ const CashierSalePage = () => {
     typedUser?.branch_id,
   ]);
 
+  // Variant Handlers
+  const handleVariantSelection = (product: ProductDetails) => {
+    setPendingVariantProduct(product);
+    setVariantModel(true);
+  };
+
+  const handleVariantModelChange = (open: boolean) => {
+    setVariantModel(open);
+    if (!open) {
+      setPendingVariantProduct(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-row gap-6 xl:grid-cols-[2fr_1fr]">
@@ -504,12 +468,10 @@ const CashierSalePage = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold">Add Items</CardTitle>
-              <div className="w-full max-w-md">
-                <Label htmlFor="product-search" className="sr-only">
-                  Search products
-                </Label>
+              <div className="w-full max-w-lg">
                 <Input
                   id="product-search"
+                  className="h-12 text-2xl"
                   value={productSearchQuery}
                   onChange={(event) => handleProductSearch(event.target.value)}
                   placeholder="Search products (name or barcode)"
@@ -521,7 +483,7 @@ const CashierSalePage = () => {
                 products={filteredProducts}
                 onSort={handleSort}
                 sortColumn={sortColumn}
-                onSelect={onAddToCart}
+                onSelect={handleVariantSelection}
               />
             </CardContent>
           </Card>
@@ -746,6 +708,12 @@ const CashierSalePage = () => {
           </Card>
         </div>
       </div>
+      <VariantSelectionModel
+        open={variantModel}
+        onOpenChange={handleVariantModelChange}
+        product={pendingVariantProduct}
+        onSelect={onAddToCart}
+      />
       <ReceiptPrinter ref={receiptPrinterRef} bill={receiptData} />
     </div>
   );

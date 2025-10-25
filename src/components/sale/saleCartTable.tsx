@@ -1,26 +1,12 @@
 "use client";
 
 import { useContext, useMemo } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Minus,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Minus, Plus, Trash2 } from "lucide-react";
 
-import CartContext from "@/context/CartContext";
+import CartContext, { ProductCartItem } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type SortOrder = "asc" | "desc";
 
@@ -44,40 +30,32 @@ interface SaleCartTableProps {
   onSort?: (column: SortColumn) => void;
 }
 
-const formatCurrency = (value: number) =>
-  `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
+const formatCurrency = (value: number) => `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
 
 const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
-  const { cart, setCart } = useContext(CartContext) as {
-    cart: CartItem[];
-    setCart: (items: CartItem[]) => void;
-  };
+  const { cart, setCart } = useContext(CartContext);
 
   const orderedCart = useMemo(() => [...cart].reverse(), [cart]);
 
-  const updateCartItem = (product: CartItem, quantity: number) => {
+  const updateCartItem = (product: ProductCartItem, quantity: number) => {
     const cartCopy = [...cart];
-    const index = cartCopy.findIndex(
-      (item) => item.product_id === product.product_id
-    );
+    const index = cartCopy.findIndex((item) => item.product_id === product.product_id);
     if (index === -1) return;
     cartCopy[index] = { ...cartCopy[index], quantity };
     setCart(cartCopy);
   };
 
-  const handleIncrement = (product: CartItem) => {
+  const handleIncrement = (product: ProductCartItem) => {
     updateCartItem(product, (product.quantity ?? 0) + 1);
   };
 
-  const handleDecrement = (product: CartItem) => {
+  const handleDecrement = (product: ProductCartItem) => {
     updateCartItem(product, (product.quantity ?? 0) - 1);
   };
 
-  const handleRemove = (product: CartItem) => {
+  const handleRemove = (product: ProductCartItem) => {
     const cartCopy = [...cart];
-    const index = cartCopy.findIndex(
-      (item) => item.product_id === product.product_id
-    );
+    const index = cartCopy.findIndex((item) => item.product_id === product.product_id);
     if (index === -1) return;
     cartCopy.splice(index, 1);
     setCart(cartCopy);
@@ -86,9 +64,7 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
   const handleSort = (path: string) => {
     if (!onSort) return;
 
-    const nextColumn: SortColumn = sortColumn
-      ? { ...sortColumn }
-      : { path, order: "asc" };
+    const nextColumn: SortColumn = sortColumn ? { ...sortColumn } : { path, order: "asc" };
 
     if (nextColumn.path === path) {
       nextColumn.order = nextColumn.order === "asc" ? "desc" : "asc";
@@ -105,11 +81,7 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
       return <ArrowUpDown className="h-3.5 w-3.5" />;
     }
 
-    return sortColumn.order === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
+    return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   };
 
   return (
@@ -146,6 +118,7 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
               {renderSortIcon("retail_price")}
             </button>
           </TableHead>
+          <TableHead className="text-right">Discount</TableHead>
           <TableHead className="text-right">Quantity</TableHead>
           <TableHead className="text-right">Total</TableHead>
           <TableHead className="text-right">Remove</TableHead>
@@ -153,19 +126,14 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
       </TableHeader>
       <TableBody>
         {orderedCart.map((product) => {
-          const total = (product.quantity ?? 0) * (product.retail_price ?? 0);
+          const total = (product.quantity ?? 0) * (Number(product.variant.retail_price) ?? 0);
 
           return (
             <TableRow key={product.product_id}>
-              <TableCell className="font-mono text-sm">
-                {product.product_barcode ?? "-"}
-              </TableCell>
-              <TableCell className="font-medium">
-                {product.product_name}
-              </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(product.retail_price ?? 0)}
-              </TableCell>
+              <TableCell className="font-mono text-sm">{product.product_barcode ?? "-"}</TableCell>
+              <TableCell className="font-medium">{product.product_name}</TableCell>
+              <TableCell className="text-right">{formatCurrency(Number(product.variant.retail_price) ?? 0)}</TableCell>
+              <TableCell className="text-right">{formatCurrency(Number(product.variant.discount) ?? 0)}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <Button
@@ -178,9 +146,11 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Input
-                    readOnly
+                    type="number"
+                    readOnly={product.stock_type == "items"}
                     value={product.quantity}
-                    className="h-9 w-14 text-center"
+                    className="h-9 w-32 text-center"
+                    onChange={(e) => updateCartItem(product, Number(e.target.value))}
                   />
                   <Button
                     type="button"
@@ -193,9 +163,7 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
                   </Button>
                 </div>
               </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(total)}
-              </TableCell>
+              <TableCell className="text-right">{formatCurrency(total)}</TableCell>
               <TableCell className="text-right">
                 <Button
                   type="button"
@@ -212,10 +180,7 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
         })}
         {orderedCart.length === 0 && (
           <TableRow>
-            <TableCell
-              colSpan={6}
-              className="py-6 text-center text-sm text-muted-foreground"
-            >
+            <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
               Cart is empty.
             </TableCell>
           </TableRow>

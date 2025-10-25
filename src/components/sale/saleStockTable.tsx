@@ -1,42 +1,22 @@
 "use client";
 
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui";
+import { ProductDetails } from "@/types/prisma-types";
+import { SortDirection } from "@/types/common-types";
 
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-type ProductColumn = "product_name" | "quantity" | "retail_price";
-
-type SortOrder = "asc" | "desc";
+type ProductColumn = "product_name" | "product_barcode";
 
 type SortColumn = {
   path: ProductColumn | string;
-  order: SortOrder;
-};
-
-type Product = {
-  product_id: string;
-  product_name: string;
-  quantity: number;
-  retail_price: number;
-  buying_price: number;
-  discount: number;
-  product_barcode?: string;
-  [key: string]: unknown;
+  order: SortDirection;
 };
 
 interface SaleStockTableProps {
-  products: Product[];
+  products: ProductDetails[];
   sortColumn: SortColumn;
   onSort: (column: SortColumn) => void;
-  onSelect: (product: Product) => void;
+  onSelect: (product: ProductDetails) => void;
 }
 
 const sortableColumns: Array<{
@@ -44,20 +24,11 @@ const sortableColumns: Array<{
   path: ProductColumn;
   align?: "left" | "right";
 }> = [
+  { label: "Barcode", path: "product_barcode" },
   { label: "Name", path: "product_name" },
-  { label: "Stock", path: "quantity", align: "right" },
-  { label: "Retail Price", path: "retail_price", align: "right" },
 ];
 
-const formatCurrency = (value: number) =>
-  `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
-
-const SaleStockTable = ({
-  products,
-  sortColumn,
-  onSort,
-  onSelect,
-}: SaleStockTableProps) => {
+const SaleStockTable = ({ products, sortColumn, onSort, onSelect }: SaleStockTableProps) => {
   const handleSort = (path: ProductColumn) => {
     const nextColumn: SortColumn = { ...sortColumn };
     if (nextColumn.path === path) {
@@ -74,11 +45,7 @@ const SaleStockTable = ({
       return <ArrowUpDown className="h-3.5 w-3.5" />;
     }
 
-    return sortColumn.order === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
+    return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   };
 
   return (
@@ -86,10 +53,7 @@ const SaleStockTable = ({
       <TableHeader>
         <TableRow>
           {sortableColumns.map(({ label, path, align }) => (
-            <TableHead
-              key={path}
-              className={align === "right" ? "text-right" : "text-left"}
-            >
+            <TableHead key={path} className={align === "right" ? "text-right" : "text-left"}>
               <button
                 type="button"
                 onClick={() => handleSort(path)}
@@ -106,19 +70,10 @@ const SaleStockTable = ({
       <TableBody>
         {products.map((product) => (
           <TableRow key={product.product_id}>
-            <TableCell className="font-medium">
-              {product.product_name}
-            </TableCell>
-            <TableCell className="text-right">{product.quantity}</TableCell>
+            <TableCell className="text-left">{product.product_barcode}</TableCell>
+            <TableCell className="font-medium">{product.product_name}</TableCell>
             <TableCell className="text-right">
-              {formatCurrency(product.retail_price)}
-            </TableCell>
-            <TableCell className="text-right">
-              <Button
-                size="sm"
-                onClick={() => onSelect(product)}
-                disabled={(product.quantity ?? 0) <= 0}
-              >
+              <Button size="sm" onClick={() => onSelect(product)}>
                 Add to Cart
               </Button>
             </TableCell>
@@ -126,10 +81,7 @@ const SaleStockTable = ({
         ))}
         {products.length === 0 && (
           <TableRow>
-            <TableCell
-              colSpan={sortableColumns.length + 1}
-              className="py-6 text-center text-sm text-muted-foreground"
-            >
+            <TableCell colSpan={sortableColumns.length + 1} className="py-6 text-center text-sm text-muted-foreground">
               Start typing to search for products.
             </TableCell>
           </TableRow>
