@@ -312,7 +312,7 @@ const CashierSalePage = () => {
     const order: SalesOrderDetails = {
       customer_id: customer && customer.customer_id !== 0 ? customer.customer_id : undefined,
       cashier_id: currentUser.employee_id,
-      total_amount: totals.subtotal.toFixed(2),
+      total_amount: totals.grandTotal.toFixed(2),
       payment_method: paymentMethod,
       reference: paymentDetails,
       branch_id: currentUser.branch_id,
