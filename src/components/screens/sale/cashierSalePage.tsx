@@ -448,7 +448,7 @@ const CashierSalePage = () => {
       paymentDetails,
       creditRepayment,
     }),
-    [customer, totals, rewardsPoints, paymentMethod, paymentDetails]
+    [customer, totals, rewardsPoints, paymentMethod, paymentDetails, creditRepayment]
   );
 
   const billButtonDisabled = useMemo(() => {
