@@ -9,30 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCategories } from "@/services/categoryService";
 import { getSuppliers } from "@/services/supplierService";
 import { getAllBranches } from "@/services/branchService";
 import { getMobileAppQrURL } from "@/services/imageHandler";
-import {
-  updateRewardsPointsPercentage,
-  getRewardsPointsPercentage,
-} from "@/services/orderService";
+import { updateRewardsPointsPercentage, getRewardsPointsPercentage } from "@/services/orderService";
 import UserContext from "@/context/UserContext";
 import { Toast } from "../ui";
-import {
-  Branch,
-  Category,
-  RewardsPointsSetting,
-  Supplier,
-} from "@/services/types";
+import { Branch, Category, RewardsPointsSetting } from "@/services/types";
+import { Supplier } from "@/types/prisma-types";
 
 type EntityType = "branches" | "categories" | "suppliers";
 
@@ -64,9 +51,7 @@ const ConfigScreen = () => {
 
   const filteredItems = useMemo(() => {
     if (!query) return items;
-    return items.filter((item) =>
-      item.name.toLowerCase().includes(query.toLowerCase())
-    );
+    return items.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
   }, [items, query]);
 
   const loadRewards = async () => {
@@ -101,23 +86,17 @@ const ConfigScreen = () => {
         setItems(
           branches.map((branch) => ({
             id: String(branch.branch_id ?? ""),
-            name:
-              branch.branch_name ?? (branch.branch_city as string) ?? "Branch",
-            action: branch.branch_id
-              ? () => router.push(`/branch/${branch.branch_id}`)
-              : undefined,
+            name: branch.branch_name ?? (branch.branch_city as string) ?? "Branch",
+            action: branch.branch_id ? () => router.push(`/branch/${branch.branch_id}`) : undefined,
           }))
         );
       } else if (entity === "suppliers") {
-        const { data } = await getSuppliers();
-        const suppliers = Array.isArray(data) ? (data as Supplier[]) : [];
+        const { data: suppliers } = await getSuppliers();
         setItems(
           suppliers.map((supplier) => ({
             id: String(supplier.supplier_id ?? ""),
             name: supplier.supplier_name ?? "Supplier",
-            action: supplier.supplier_id
-              ? () => router.push(`/suppliers/${supplier.supplier_id}`)
-              : undefined,
+            action: supplier.supplier_id ? () => router.push(`/suppliers/${supplier.supplier_id}`) : undefined,
           }))
         );
       } else if (entity === "categories") {
@@ -160,8 +139,7 @@ const ConfigScreen = () => {
       Toast.promise(promise, {
         loading: "Updating rewards percentage…",
         success: "Rewards percentage updated",
-        error: (error) =>
-          error?.response?.data?.error ?? "Failed to update rewards percentage",
+        error: (error) => error?.response?.data?.error ?? "Failed to update rewards percentage",
       });
       await promise;
       await loadRewards();
@@ -213,8 +191,7 @@ const ConfigScreen = () => {
             buttons={[
               {
                 label: "View Branch Details",
-                onClick: () =>
-                  router.push(`/branch/${currentUser?.branch_id ?? ""}`),
+                onClick: () => router.push(`/branch/${currentUser?.branch_id ?? ""}`),
               },
               {
                 label: "Add New Branch",
@@ -296,9 +273,7 @@ const ConfigScreen = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                Loyalty Program
-              </CardTitle>
+              <CardTitle className="text-lg font-semibold">Loyalty Program</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {isRewardsLoading ? (
@@ -309,8 +284,7 @@ const ConfigScreen = () => {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Current rewards percentage:{" "}
-                    <span className="font-medium">{rewardPercentage}%</span>
+                    Current rewards percentage: <span className="font-medium">{rewardPercentage}%</span>
                   </p>
                   <Tabs defaultValue="set">
                     <TabsList className="w-full">
@@ -323,38 +297,27 @@ const ConfigScreen = () => {
                     </TabsList>
                     <TabsContent value="set" className="space-y-3 pt-3">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                          Rewards Percentage (%)
-                        </label>
+                        <label className="text-sm font-medium">Rewards Percentage (%)</label>
                         <Input
                           type="number"
                           value={rewardDraft}
                           min={0}
                           max={MAX_REWARD_PERCENTAGE}
-                          onChange={(event) =>
-                            handleRewardChange(event.target.value)
-                          }
+                          onChange={(event) => handleRewardChange(event.target.value)}
                         />
                       </div>
                       <Button
                         onClick={handleSaveRewards}
-                        disabled={
-                          isSavingRewards ||
-                          rewardDraft === "" ||
-                          rewardDraft === rewardPercentage
-                        }
+                        disabled={isSavingRewards || rewardDraft === "" || rewardDraft === rewardPercentage}
                       >
-                        {isSavingRewards && (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        )}
+                        {isSavingRewards && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save Changes
                       </Button>
                     </TabsContent>
                     <TabsContent value="info" className="space-y-2 pt-3">
                       <p className="text-sm text-muted-foreground">
-                        Set the percentage of each sale total that customers
-                        earn as loyalty points. For example, a value of 1% adds
-                        one point for every Rs.100 spent.
+                        Set the percentage of each sale total that customers earn as loyalty points. For example, a
+                        value of 1% adds one point for every Rs.100 spent.
                       </p>
                     </TabsContent>
                   </Tabs>
@@ -365,16 +328,10 @@ const ConfigScreen = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                Mobile Application
-              </CardTitle>
+              <CardTitle className="text-lg font-semibold">Mobile Application</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowQr(true)}
-                className="justify-start"
-              >
+              <Button variant="outline" onClick={() => setShowQr(true)} className="justify-start">
                 <QrCode className="mr-2 h-4 w-4" />
                 Download Smart POS Mobile App
               </Button>
@@ -387,20 +344,14 @@ const ConfigScreen = () => {
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
                 {activeEntity
-                  ? `Browse ${activeEntity
-                      .charAt(0)
-                      .toUpperCase()}${activeEntity.slice(1)}`
+                  ? `Browse ${activeEntity.charAt(0).toUpperCase()}${activeEntity.slice(1)}`
                   : "Select an option to browse"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {activeEntity ? (
                 <>
-                  <Input
-                    placeholder="Search…"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
+                  <Input placeholder="Search…" value={query} onChange={(event) => setQuery(event.target.value)} />
                   <div className="rounded-md border">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
@@ -408,26 +359,15 @@ const ConfigScreen = () => {
                         Loading {activeEntity}…
                       </div>
                     ) : filteredItems.length === 0 ? (
-                      <div className="py-6 text-center text-sm text-muted-foreground">
-                        No entries found.
-                      </div>
+                      <div className="py-6 text-center text-sm text-muted-foreground">No entries found.</div>
                     ) : (
                       <ScrollArea className="h-[320px]">
                         <ul className="divide-y">
                           {filteredItems.map((item) => (
-                            <li
-                              key={item.id}
-                              className="flex items-center justify-between gap-2 px-4 py-3"
-                            >
-                              <span className="text-sm font-medium">
-                                {item.name}
-                              </span>
+                            <li key={item.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                              <span className="text-sm font-medium">{item.name}</span>
                               {item.action && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={item.action}
-                                >
+                                <Button size="sm" variant="outline" onClick={item.action}>
                                   View
                                 </Button>
                               )}
@@ -439,9 +379,7 @@ const ConfigScreen = () => {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Choose an action on the left to browse details.
-                </p>
+                <p className="text-sm text-muted-foreground">Choose an action on the left to browse details.</p>
               )}
             </CardContent>
           </Card>
@@ -458,19 +396,12 @@ const ConfigScreen = () => {
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <p>
-              Scan the QR code below with your device to download the mobile
-              application. After installing, log in using your employee
-              credentials.
+              Scan the QR code below with your device to download the mobile application. After installing, log in using
+              your employee credentials.
             </p>
             <div className="flex justify-center">
               <div className="relative h-56 w-56 overflow-hidden rounded-xl border">
-                <Image
-                  src={getMobileAppQrURL()}
-                  alt="Smart POS Mobile QR"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
+                <Image src={getMobileAppQrURL()} alt="Smart POS Mobile QR" fill className="object-cover" unoptimized />
               </div>
             </div>
           </div>

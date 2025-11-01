@@ -27,12 +27,6 @@ const productColumns: {
 }[] = [
   { key: "product_name", label: "Name", path: "product_name", sortable: true },
   {
-    key: "buying_price",
-    label: "Buying Price",
-    path: "buying_price",
-    sortable: true,
-  },
-  {
     key: "product_barcode",
     label: "Barcode",
     path: "product_barcode",
@@ -206,7 +200,6 @@ const SupplierProfile = () => {
                   sortedProducts.map((product, index) => (
                     <TableRow key={String(product.product_id ?? index)}>
                       <TableCell className="font-medium">{product.product_name ?? "Unnamed"}</TableCell>
-                      <TableCell>Rs. {Number(product.buying_price ?? 0).toFixed(2)}</TableCell>
                       <TableCell>{product.product_barcode ?? "—"}</TableCell>
                     </TableRow>
                   ))

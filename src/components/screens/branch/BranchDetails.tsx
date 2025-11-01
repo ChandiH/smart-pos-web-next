@@ -6,12 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Toast } from "@/components/ui";
 import { getBranch } from "@/services/branchService";
 import { getEmployeeByBranch } from "@/services/employeeService";
@@ -53,7 +48,7 @@ const BranchDetails = () => {
         setIsLoadingBranch(true);
         setIsLoadingEmployees(true);
 
-        const { data: branchResponse } = await getBranch(branchId as Identifier);
+        const { data: branchResponse } = await getBranch({ branch_id: branchId });
         const branchData = Array.isArray(branchResponse)
           ? (branchResponse[0] as BranchRecord | undefined)
           : (branchResponse as BranchRecord | undefined);
@@ -66,12 +61,8 @@ const BranchDetails = () => {
 
         setBranch(branchData);
 
-        const { data: employeeResponse } = await getEmployeeByBranch(
-          branchId as Identifier
-        );
-        const employeeList = Array.isArray(employeeResponse)
-          ? (employeeResponse as BranchEmployee[])
-          : [];
+        const { data: employeeResponse } = await getEmployeeByBranch(branchId as Identifier);
+        const employeeList = Array.isArray(employeeResponse) ? (employeeResponse as BranchEmployee[]) : [];
         setEmployees(employeeList);
       } catch (error) {
         console.error("Failed to load branch details", error);
@@ -120,9 +111,7 @@ const BranchDetails = () => {
         <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="text-lg font-semibold">{branchTitle}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Review core details for this branch.
-            </p>
+            <p className="text-sm text-muted-foreground">Review core details for this branch.</p>
           </div>
           <Button variant="outline" onClick={() => router.back()}>
             Go Back
@@ -131,31 +120,23 @@ const BranchDetails = () => {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm text-muted-foreground">Email</p>
-            <p className="text-base font-medium">
-              {String(getBranchField("branch_email", "email") ?? "Not provided")}
-            </p>
+            <p className="text-base font-medium">{String(getBranchField("branch_email", "email") ?? "Not provided")}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Contact</p>
             <p className="text-base font-medium">
-              {String(
-                getBranchField("branch_phone", "contact_number") ?? "Not provided"
-              )}
+              {String(getBranchField("branch_phone", "contact_number") ?? "Not provided")}
             </p>
           </div>
           <div className="md:col-span-2">
             <p className="text-sm text-muted-foreground">Address</p>
             <p className="text-base font-medium">
-              {String(
-                getBranchField("branch_address", "address") ?? "Not provided"
-              )}
+              {String(getBranchField("branch_address", "address") ?? "Not provided")}
             </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Branch ID</p>
-            <p className="text-base font-medium">
-              {String(getBranchField("branch_id", "id") ?? "Not available")}
-            </p>
+            <p className="text-base font-medium">{String(getBranchField("branch_id", "id") ?? "Not available")}</p>
           </div>
         </CardContent>
       </Card>
@@ -163,12 +144,8 @@ const BranchDetails = () => {
       <Card>
         <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">
-              Employees ({employees.length})
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Team members assigned to this branch.
-            </p>
+            <CardTitle className="text-lg font-semibold">Employees ({employees.length})</CardTitle>
+            <p className="text-sm text-muted-foreground">Team members assigned to this branch.</p>
           </div>
         </CardHeader>
         <CardContent>
@@ -185,12 +162,8 @@ const BranchDetails = () => {
                   : typeof employee.employee_image === "string"
                   ? employee.employee_image
                   : undefined;
-                const imageUrl = imageSource
-                  ? getImageUrl(imageSource)
-                  : "https://placehold.co/160x160/png";
-                const hiredDate = employee.hired_date
-                  ? new Date(employee.hired_date).toISOString().slice(0, 10)
-                  : "—";
+                const imageUrl = imageSource ? getImageUrl(imageSource) : "https://placehold.co/160x160/png";
+                const hiredDate = employee.hired_date ? new Date(employee.hired_date).toISOString().slice(0, 10) : "—";
 
                 return (
                   <div
@@ -207,24 +180,16 @@ const BranchDetails = () => {
                       />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-base font-semibold">
-                        {employee.employee_name ?? "Employee"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {employee.role_name ?? "Role not specified"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Hired on: {hiredDate}
-                      </p>
+                      <p className="text-base font-semibold">{employee.employee_name ?? "Employee"}</p>
+                      <p className="text-sm text-muted-foreground">{employee.role_name ?? "Role not specified"}</p>
+                      <p className="text-xs text-muted-foreground">Hired on: {hiredDate}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="py-12 text-center text-muted-foreground">
-              No employees found for this branch.
-            </p>
+            <p className="py-12 text-center text-muted-foreground">No employees found for this branch.</p>
           )}
         </CardContent>
       </Card>

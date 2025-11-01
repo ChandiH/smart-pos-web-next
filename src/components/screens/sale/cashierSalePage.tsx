@@ -11,65 +11,35 @@ import SaleStockTable from "@/components/sale/saleStockTable";
 import { getCustomers } from "@/services/customerService";
 import { getInventoryWithProduct } from "@/services/inventoryService";
 import { getRewardsPointsPercentage, submitOrder } from "@/services/orderService";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Input,
-  Label,
-  Separator,
-  Toast,
-} from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Separator, Toast } from "@/components/ui";
 import useBarcodeScanner from "@/hooks/useBarcodeScanner";
 import ReceiptPrinter, { ReceiptBill, ReceiptPrinterHandle } from "@/components/print/ReceiptPrinter";
+import VariantSelectionModel from "@/components/sale/VariantSelectionModel";
+import BillSummaryDialog from "@/components/sale/BillSummaryDialog";
+import { InsertSalesPayload, SalesOrderDetails, SalesProductLine } from "@/types/sale-types";
 import { Customer, Product_Variant, ProductDetails } from "@/types/prisma-types";
 import { SortDirection } from "@/types/common-types";
-import VariantSelectionModel from "@/components/sale/VariantSelectionModel";
 
 type SortColumn = {
   path: string;
   order: SortDirection;
 };
 
-type CashierUser = {
-  branch_id?: string;
-  employee_id?: string;
-  employee_name?: string;
-  [key: string]: unknown;
+type PaymentMethod = "cash" | "debitCard" | "credit" | "loyalty";
+
+export type OrderSummary = {
+  customer: Customer | null;
+  totals: {
+    quantity: number;
+    subtotal: number;
+    discount: number;
+    grandTotal: number;
+  };
+  rewardsPoints?: number;
+  paymentMethod: PaymentMethod;
+  paymentDetails: string;
+  creditRepayment?: string;
 };
-
-type PaymentMethod = "cash" | "credit/debit" | "mobile" | "loyalty";
-
-const guestCustomer: Customer = {
-  customer_id: 0,
-  customer_name: "Guest Customer",
-  customer_email: "",
-  customer_phone: "0000000000",
-  customer_address: "",
-  rewards_points: "0",
-  credits: "0",
-  visit_count: 0,
-  created_at: new Date().toDateString(),
-};
-
-const paymentMethods: {
-  label: string;
-  value: PaymentMethod;
-  disabled?: boolean;
-}[] = [
-  { label: "Cash", value: "cash" },
-  { label: "Credit/Debit", value: "credit/debit" },
-  { label: "Mobile Payment", value: "mobile", disabled: true },
-  { label: "Loyalty", value: "loyalty" },
-];
 
 const formatCurrency = (value: number) => `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
 
@@ -77,6 +47,22 @@ const CashierSalePage = () => {
   const router = useRouter();
   const { currentUser } = useContext(UserContext);
   const { cart, setCart } = useContext(CartContext);
+  const [products, setProducts] = useState<ProductDetails[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [isCustomerSearchFocused, setCustomerSearchFocused] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paymentDetails, setPaymentDetails] = useState("");
+  const [creditRepayment, setCreditRepayment] = useState("");
+  const [rewardsPointsPercentage, setRewardsPointsPercentage] = useState(0);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [variantModel, setVariantModel] = useState<boolean>(false);
+  const [pendingVariantProduct, setPendingVariantProduct] = useState<ProductDetails | null>(null);
+
+  const customerSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const receiptPrinterRef = useRef<ReceiptPrinterHandle | null>(null);
 
   const [sortColumn, setSortColumn] = useState<SortColumn>({
     path: "product_name",
@@ -91,27 +77,21 @@ const CashierSalePage = () => {
     []
   );
 
-  const [products, setProducts] = useState<ProductDetails[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customer, setCustomer] = useState<Customer>({ ...guestCustomer });
-  const [productSearchQuery, setProductSearchQuery] = useState("");
-  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
-  const [isCustomerSearchFocused, setCustomerSearchFocused] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
-  const [paymentDetails, setPaymentDetails] = useState("");
-  const [rewardsPointsPercentage, setRewardsPointsPercentage] = useState(0);
-  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
-  const [variantModel, setVariantModel] = useState<boolean>(false);
-  const [pendingVariantProduct, setPendingVariantProduct] = useState<ProductDetails | null>(null);
-
-  const customerSearchInputRef = useRef<HTMLInputElement | null>(null);
-  const receiptPrinterRef = useRef<ReceiptPrinterHandle | null>(null);
-
-  const typedUser = (currentUser as CashierUser | null) ?? null;
-  const branchId = typedUser?.branch_id;
+  const paymentMethods: {
+    label: string;
+    value: PaymentMethod;
+    disabled?: boolean;
+  }[] = useMemo(() => {
+    return [
+      { label: "Cash", value: "cash" },
+      { label: "VISA/Master Card", value: "debitCard" },
+      { label: "Credit Payment", value: "credit", disabled: !customer },
+      { label: "Loyalty", value: "loyalty", disabled: true /* TODO: Disabled for now */ },
+    ];
+  }, [customer]);
 
   const loadData = useCallback(async () => {
-    if (!branchId) return;
+    if (!currentUser?.branch_id) return;
 
     try {
       const [{ data: rewards }, { data: customerList }, { data: productList }] = await Promise.all([
@@ -130,7 +110,13 @@ const CashierSalePage = () => {
       console.error("Failed to load cashier data", error);
       Toast.error("Unable to load cashier data. Please try again.");
     }
-  }, [branchId]);
+  }, [currentUser?.branch_id]);
+
+  useEffect(() => {
+    if (!customer) {
+      setPaymentMethod("cash");
+    }
+  }, [customer]);
 
   useEffect(() => {
     void loadData();
@@ -169,7 +155,7 @@ const CashierSalePage = () => {
         barcode: normalizedBarcode,
       });
       setCustomerSearchQuery(normalizedBarcode);
-      setCustomer({ ...guestCustomer });
+      setCustomer(null);
       Toast.error("No customer matches the scanned barcode.");
     },
   });
@@ -218,7 +204,7 @@ const CashierSalePage = () => {
   const handleCustomerSearch = (query: string) => {
     setCustomerSearchQuery(query);
     if (!query) {
-      setCustomer({ ...guestCustomer });
+      setCustomer(null);
       return;
     }
 
@@ -232,7 +218,7 @@ const CashierSalePage = () => {
       return Boolean(matchesName || matchesPhone);
     });
 
-    setCustomer(filteredCustomer ?? { ...guestCustomer });
+    setCustomer(filteredCustomer ?? null);
   };
 
   const onAddToCart = (productVariant: Product_Variant) => {
@@ -261,38 +247,28 @@ const CashierSalePage = () => {
   const totals = useMemo(() => {
     const quantity = cart.reduce((acc, item) => acc + (item.quantity ?? 0), 0);
     const subtotal = cart.reduce((acc, item) => acc + (item.quantity ?? 0) * Number(item.variant.retail_price ?? 0), 0);
-
     const discount = cart.reduce((acc, item) => acc + (item.quantity ?? 0) * Number(item.variant.discount ?? 0), 0);
-
-    const profit = cart.reduce((acc, item) => {
-      const totalProfit =
-        (item.quantity ?? 0) * (Number(item.variant.retail_price ?? 0) - Number(item.variant.buying_price ?? 0)) -
-        Number(item.variant.discount ?? 0);
-      return acc + totalProfit;
-    }, 0);
 
     const subtotalRounded = Number(subtotal.toFixed(2));
     const discountRounded = Number(discount.toFixed(2));
-    const profitRounded = Number(profit.toFixed(2));
     const grandTotal = Number(Math.max(subtotalRounded - discountRounded, 0).toFixed(2));
 
     return {
       quantity,
       subtotal: subtotalRounded,
       discount: discountRounded,
-      profit: profitRounded,
       grandTotal,
     };
   }, [cart]);
 
   const rewardsPoints = useMemo(() => {
-    if (customer.customer_name === guestCustomer.customer_name) {
+    if (!customer) {
       return 0;
     }
 
     const points = (totals.subtotal * rewardsPointsPercentage) / 100;
     return Number(points.toFixed(2));
-  }, [customer.customer_name, totals.subtotal, rewardsPointsPercentage]);
+  }, [customer, totals.subtotal, rewardsPointsPercentage]);
 
   const filteredProducts = useMemo(() => {
     if (!productSearchQuery) {
@@ -315,6 +291,7 @@ const CashierSalePage = () => {
     if (paymentMethod === method) return;
     setPaymentMethod(method);
     setPaymentDetails("");
+    setCreditRepayment("");
   };
 
   const handleClearCart = () => {
@@ -327,35 +304,36 @@ const CashierSalePage = () => {
 
   const handlePlaceOrder = async () => {
     if (!validateOrder()) return;
-    if (!typedUser?.employee_id || !typedUser?.branch_id) {
+    if (!currentUser?.employee_id || !currentUser?.branch_id) {
       Toast.error("Missing cashier information. Please sign in again.");
       return;
     }
 
-    const order = {
-      customer_id: customer.customer_id,
-      cashier_id: typedUser.employee_id,
+    const order: SalesOrderDetails = {
+      customer_id: customer && customer.customer_id !== 0 ? customer.customer_id : undefined,
+      cashier_id: currentUser.employee_id,
       total_amount: totals.subtotal.toFixed(2),
-      profit: totals.profit.toFixed(2),
-      payment_method_id: "1",
-      reference_id: paymentDetails,
-      branch_id: typedUser.branch_id,
+      payment_method: paymentMethod,
+      reference: paymentDetails,
+      branch_id: currentUser.branch_id,
       rewards_points: rewardsPoints.toFixed(2),
       product_count: totals.quantity,
+      credit_payment: paymentMethod === "credit" ? creditRepayment || "0" : undefined,
     };
 
-    const orderedProducts = cart.map((product) => ({
+    const orderedProducts: SalesProductLine[] = cart.map((product) => ({
       product_id: product.product_id,
       quantity: product.quantity,
+      variant_id: product.variant.variant_id,
     }));
 
+    const payload: InsertSalesPayload = {
+      order,
+      products: orderedProducts,
+    };
+
     try {
-      const promise = submitOrder({
-        salesData: {
-          order,
-          products: orderedProducts,
-        },
-      });
+      const promise = submitOrder(payload);
 
       Toast.promise(promise, {
         success: "Order placed",
@@ -365,10 +343,11 @@ const CashierSalePage = () => {
       await promise;
 
       setCart([]);
-      setCustomer({ ...guestCustomer });
+      setCustomer(null);
       setCustomerSearchQuery("");
       setPaymentMethod("cash");
       setPaymentDetails("");
+      setCreditRepayment("");
       setIsSummaryOpen(false);
       void loadData();
     } catch (error) {
@@ -379,8 +358,6 @@ const CashierSalePage = () => {
 
   const isCashPayment = paymentMethod === "cash" || paymentMethod === "loyalty";
   const parsedPaymentDetails = Number(paymentDetails) || 0;
-  const changeDue = isCashPayment ? parsedPaymentDetails - totals.grandTotal : 0;
-  const isChangeNegative = isCashPayment && changeDue < 0;
 
   const paymentInputType = isCashPayment ? "number" : "text";
 
@@ -412,19 +389,21 @@ const CashierSalePage = () => {
       return null;
     }
 
-    const isGuestCustomer = customer.customer_name === guestCustomer.customer_name;
+    const isGuestCustomer = !customer;
 
     const cashReceived = isCashPayment ? Math.max(parsedPaymentDetails, 0) : undefined;
 
     const branchLabel =
-      typedUser?.branch_id !== undefined && typedUser.branch_id !== null ? `Branch ${typedUser.branch_id}` : undefined;
+      currentUser?.branch_id !== undefined && currentUser.branch_id !== null
+        ? `Branch ${currentUser.branch_id}`
+        : undefined;
 
     return {
       shopName: branchLabel ?? "Smart POS",
       address: undefined,
       phone: undefined,
-      customer: customer.customer_name,
-      loyaltyPoints: isGuestCustomer ? undefined : Number(customer.rewards_points ?? 0),
+      customer: customer ? customer.customer_name : undefined,
+      loyaltyPoints: isGuestCustomer ? undefined : Number(customer?.rewards_points ?? 0),
       loyaltyEarned: rewardsPoints > 0 ? rewardsPoints : undefined,
       credit: undefined,
       invoiceNo: undefined,
@@ -438,14 +417,13 @@ const CashierSalePage = () => {
     };
   }, [
     cart,
-    customer.customer_name,
-    customer.rewards_points,
+    customer,
     isCashPayment,
     parsedPaymentDetails,
     paymentDetails,
     paymentMethod,
     rewardsPoints,
-    typedUser?.branch_id,
+    currentUser?.branch_id,
   ]);
 
   // Variant Handlers
@@ -460,6 +438,35 @@ const CashierSalePage = () => {
       setPendingVariantProduct(null);
     }
   };
+
+  const orderSummary: OrderSummary = useMemo(
+    () => ({
+      customer,
+      totals,
+      rewardsPoints: Number(rewardsPoints) || 0,
+      paymentMethod,
+      paymentDetails,
+      creditRepayment,
+    }),
+    [customer, totals, rewardsPoints, paymentMethod, paymentDetails]
+  );
+
+  const billButtonDisabled = useMemo(() => {
+    if (cart.length === 0) {
+      return true;
+    }
+    if (paymentMethod === "cash" && !customer && parsedPaymentDetails < totals.grandTotal) {
+      return true;
+    }
+    if (
+      paymentMethod === "credit" &&
+      (!customer || parsedPaymentDetails <= Number(creditRepayment) + Number(totals.grandTotal))
+    ) {
+      return true;
+    }
+
+    return false;
+  }, [cart.length, paymentMethod, customer, parsedPaymentDetails, totals.grandTotal, creditRepayment]);
 
   return (
     <div className="space-y-6">
@@ -527,9 +534,9 @@ const CashierSalePage = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Customer Name</span>
-                  <span>{customer.customer_name}</span>
+                  <span>{customer?.customer_name ?? "Guest Customer"}</span>
                 </div>
-                {customer.customer_name !== guestCustomer.customer_name && (
+                {customer && (
                   <>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Contact</span>
@@ -550,7 +557,7 @@ const CashierSalePage = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Cashier</span>
-                  <span>{typedUser?.employee_name ?? "N/A"}</span>
+                  <span>{currentUser?.employee_name ?? "N/A"}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Total Quantity</span>
@@ -597,113 +604,61 @@ const CashierSalePage = () => {
                   </Button>
                 ))}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="payment-details">{isCashPayment ? "Cash Given" : "Reference Number"}</Label>
-                <Input
-                  id="payment-details"
-                  type={paymentInputType}
-                  placeholder={isCashPayment ? "Enter amount received" : "Enter reference"}
-                  value={paymentDetails}
-                  onChange={(event) => setPaymentDetails(event.target.value)}
-                />
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label htmlFor="order-comment">Comment</Label>
-                <textarea
-                  id="order-comment"
-                  name="order-comment"
-                  placeholder="Optional note for this order"
-                  className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </div>
-              <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
-                <DialogTrigger asChild>
-                  <Button disabled={!validateOrder()} className="w-full py-6 text-lg font-semibold">
+              {paymentMethod === "cash" && (
+                <div className="space-y-2">
+                  <Label htmlFor="payment-details">Cash Given</Label>
+                  <Input
+                    id="payment-details-reference"
+                    type={paymentInputType}
+                    placeholder={"Cash Given"}
+                    value={paymentDetails}
+                    onChange={(event) => setPaymentDetails(event.target.value)}
+                  />
+                </div>
+              )}
+              {paymentMethod === "debitCard" && (
+                <div className="space-y-2">
+                  <Label htmlFor="payment-details">Reference Number</Label>
+                  <Input
+                    id="payment-details-reference"
+                    type={paymentInputType}
+                    placeholder={"Enter reference"}
+                    value={paymentDetails}
+                    onChange={(event) => setPaymentDetails(event.target.value)}
+                  />
+                </div>
+              )}
+              {paymentMethod === "credit" && (
+                <div className="space-y-2">
+                  <Label htmlFor="payment-details">Cash Given</Label>
+                  <Input
+                    id="payment-details-reference"
+                    type={paymentInputType}
+                    placeholder={"Cash Given"}
+                    value={paymentDetails}
+                    onChange={(event) => setPaymentDetails(event.target.value)}
+                  />
+                  <Label htmlFor="payment-details">Repayment</Label>
+                  <Input
+                    id="payment-details-reference"
+                    type={paymentInputType}
+                    placeholder={"Repayment Amount"}
+                    value={creditRepayment}
+                    onChange={(event) => setCreditRepayment(event.target.value)}
+                  />
+                </div>
+              )}
+              <BillSummaryDialog
+                open={isSummaryOpen}
+                onOpenChange={setIsSummaryOpen}
+                orderSummary={orderSummary}
+                onSubmit={handlePlaceOrder}
+                triggerButton={
+                  <Button className="w-full py-6 text-lg font-semibold" disabled={billButtonDisabled}>
                     Bill
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Bill Summary</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 text-sm">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Cashier</span>
-                        <span>{typedUser?.employee_name ?? "N/A"}</span>
-                      </div>
-                      {customer.customer_name !== guestCustomer.customer_name && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Customer</span>
-                          <span>{customer.customer_name}</span>
-                        </div>
-                      )}
-                    </div>
-                    <Separator />
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Total Quantity</span>
-                        <span>{totals.quantity}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Sub Total</span>
-                        <span>{formatCurrency(totals.subtotal)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Discount</span>
-                        <span>{formatCurrency(totals.discount)}</span>
-                      </div>
-                      <div className="flex items-center justify-between font-semibold">
-                        <span>Grand Total</span>
-                        <span>{formatCurrency(totals.grandTotal)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">New Loyalty Points</span>
-                        <span>{rewardsPoints.toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Payment Method</span>
-                        <span>{paymentMethod}</span>
-                      </div>
-                      {isCashPayment && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Cash Given</span>
-                          <span>{formatCurrency(parsedPaymentDetails)}</span>
-                        </div>
-                      )}
-                    </div>
-                    {isCashPayment && (
-                      <>
-                        <Separator />
-                        <div className="flex items-center justify-between text-base font-semibold">
-                          <span>Change Due</span>
-                          <span>{formatCurrency(changeDue)}</span>
-                        </div>
-                        {isChangeNegative && (
-                          <p className="text-sm text-destructive">Received amount is less than the grand total.</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <DialogFooter className="gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={isChangeNegative || !receiptData}
-                      onClick={() => {
-                        if (!receiptData) return;
-                        receiptPrinterRef.current?.print();
-                      }}
-                    >
-                      Print Receipt
-                    </Button>
-                    <Button type="button" onClick={handlePlaceOrder} disabled={isChangeNegative}>
-                      Get Next Order
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                }
+              />
             </CardContent>
           </Card>
         </div>

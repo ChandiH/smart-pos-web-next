@@ -5,30 +5,14 @@ import orderBy from "lodash/orderBy";
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import UserContext from "@/context/UserContext";
-import {
-  addEmployeeRecord,
-  getEmployeeByBranch,
-  getRecordByDateBranch,
-} from "@/services/employeeService";
-import type { Employee, Identifier, WorkingHourRecord } from "@/services/types";
+import { addEmployeeRecord, getEmployeeByBranch, getRecordByDateBranch } from "@/services/employeeService";
 import { Toast } from "@/components/ui";
+import { Employee, WorkingHourWithEmployee } from "@/types/prisma-types";
+import { Identifier } from "@/services/types";
 
 type SortDirection = "asc" | "desc";
 
@@ -60,12 +44,8 @@ const EmployeeWorkingHour = () => {
   const user = (currentUser as ExtendedUser | null) ?? {};
 
   const [selectedDate, setSelectedDate] = useState<string>(today());
-  const [unmarkedEmployees, setUnmarkedEmployees] = useState<
-    EmployeeShiftRecord[]
-  >([]);
-  const [markedEmployees, setMarkedEmployees] = useState<WorkingHourRecord[]>(
-    []
-  );
+  const [unmarkedEmployees, setUnmarkedEmployees] = useState<EmployeeShiftRecord[]>([]);
+  const [markedEmployees, setMarkedEmployees] = useState<WorkingHourWithEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>({
     path: "employee_name",
@@ -78,22 +58,13 @@ const EmployeeWorkingHour = () => {
     if (!branchId) return;
     try {
       setIsLoading(true);
-      const [{ data: employees }, { data: marked }] = await Promise.all([
+      const [{ data: employees }, { data: markedRecords }] = await Promise.all([
         getEmployeeByBranch(branchId),
         getRecordByDateBranch(selectedDate, branchId),
       ]);
 
-      const markedRecords = Array.isArray(marked)
-        ? (marked as WorkingHourRecord[])
-        : [];
-
       const unmarked = (Array.isArray(employees) ? employees : [])
-        .filter(
-          (employee) =>
-            !markedRecords.find(
-              (record) => record.employee_id === employee.employee_id
-            )
-        )
+        .filter((employee) => !markedRecords.find((record) => record.employee_id === employee.employee_id))
         .filter((employee) => employee.role_id !== 1) // Exclude owner role
         .map((employee) => mapToShiftRecord(employee));
 
@@ -144,17 +115,9 @@ const EmployeeWorkingHour = () => {
     });
   };
 
-  const handleTimeChange = (
-    employee: EmployeeShiftRecord,
-    field: "shift_on" | "shift_off",
-    value: string
-  ) => {
+  const handleTimeChange = (employee: EmployeeShiftRecord, field: "shift_on" | "shift_off", value: string) => {
     setUnmarkedEmployees((prev) =>
-      prev.map((item) =>
-        item.employee_id === employee.employee_id
-          ? { ...item, [field]: value }
-          : item
-      )
+      prev.map((item) => (item.employee_id === employee.employee_id ? { ...item, [field]: value } : item))
     );
   };
 
@@ -210,19 +173,14 @@ const EmployeeWorkingHour = () => {
   };
 
   const sortedUnmarkedEmployees = useMemo(
-    () =>
-      orderBy(
-        unmarkedEmployees,
-        [sortColumn.path as string],
-        [sortColumn.order]
-      ),
+    () => orderBy(unmarkedEmployees, [sortColumn.path as string], [sortColumn.order]),
     [unmarkedEmployees, sortColumn]
   );
 
   const mapToPayload = (employee: EmployeeShiftRecord) => ({
     employee_id: employee.employee_id,
     employee_name: employee.employee_name,
-    role_name: employee.role_name,
+    role_name: employee.role_id,
     date: employee.date,
     shift_on: employee.shift_on,
     shift_off: employee.shift_off,
@@ -237,9 +195,7 @@ const EmployeeWorkingHour = () => {
     const current = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     if (selected > current) {
-      Toast.error(
-        "Updating employee working hours for a future date is not allowed."
-      );
+      Toast.error("Updating employee working hours for a future date is not allowed.");
     } else if (selected < current) {
       setSelectedDate(value);
     } else {
@@ -251,11 +207,7 @@ const EmployeeWorkingHour = () => {
     if (sortColumn.path !== path) {
       return <ArrowUpDown className="h-3.5 w-3.5" />;
     }
-    return sortColumn.order === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
+    return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   };
 
   return (
@@ -263,13 +215,9 @@ const EmployeeWorkingHour = () => {
       <Card>
         <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">
-              Record Employee Working Hours
-            </CardTitle>
+            <CardTitle className="text-lg font-semibold">Record Employee Working Hours</CardTitle>
             <CardDescription>
-              {user.branch_name
-                ? `${user.branch_name} branch`
-                : "Assign employees to shifts"}
+              {user.branch_name ? `${user.branch_name} branch` : "Assign employees to shifts"}
             </CardDescription>
           </div>
           <div className="w-full max-w-xs">
@@ -292,19 +240,13 @@ const EmployeeWorkingHour = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead
-                      className="cursor-pointer"
-                      onClick={() => handleSort("employee_id")}
-                    >
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("employee_id")}>
                       <span className="inline-flex items-center gap-1">
                         ID
                         {renderSortIcon("employee_id")}
                       </span>
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer"
-                      onClick={() => handleSort("employee_name")}
-                    >
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("employee_name")}>
                       <span className="inline-flex items-center gap-1">
                         Name
                         {renderSortIcon("employee_name")}
@@ -320,49 +262,27 @@ const EmployeeWorkingHour = () => {
                   {sortedUnmarkedEmployees.map((employee) => (
                     <TableRow key={employee.employee_id}>
                       <TableCell>{employee.employee_id}</TableCell>
-                      <TableCell className="font-medium">
-                        {employee.employee_name}
-                      </TableCell>
-                      <TableCell>{employee.role_name ?? "—"}</TableCell>
+                      <TableCell className="font-medium">{employee.employee_name}</TableCell>
+                      <TableCell>{employee.role_id ?? "—"}</TableCell>
                       <TableCell>
                         <Input
                           type="time"
                           value={employee.shift_on}
-                          onChange={(event) =>
-                            handleTimeChange(
-                              employee,
-                              "shift_on",
-                              event.target.value
-                            )
-                          }
+                          onChange={(event) => handleTimeChange(employee, "shift_on", event.target.value)}
                         />
                       </TableCell>
                       <TableCell>
                         <Input
                           type="time"
                           value={employee.shift_off}
-                          onChange={(event) =>
-                            handleTimeChange(
-                              employee,
-                              "shift_off",
-                              event.target.value
-                            )
-                          }
+                          onChange={(event) => handleTimeChange(employee, "shift_off", event.target.value)}
                         />
                       </TableCell>
                       <TableCell className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => submitLeaveRecord(employee)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => submitLeaveRecord(employee)}>
                           Leave
                         </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => submitRecord(employee)}
-                          disabled={!validateRecord(employee)}
-                        >
+                        <Button size="sm" onClick={() => submitRecord(employee)} disabled={!validateRecord(employee)}>
                           Save
                         </Button>
                       </TableCell>
@@ -373,8 +293,7 @@ const EmployeeWorkingHour = () => {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              All employee records for this date are already recorded. Review
-              them below.
+              All employee records for this date are already recorded. Review them below.
             </p>
           )}
         </CardContent>
@@ -382,9 +301,7 @@ const EmployeeWorkingHour = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">
-            Recorded Working Hours on {selectedDate}
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold">Recorded Working Hours on {selectedDate}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-hidden rounded-lg border">
@@ -402,21 +319,16 @@ const EmployeeWorkingHour = () => {
               <TableBody>
                 {markedEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="py-10 text-center text-sm text-muted-foreground"
-                    >
+                    <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                       No records found for this date.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  markedEmployees.map((item: WorkingHourRecord) => (
+                  markedEmployees.map((item: WorkingHourWithEmployee) => (
                     <TableRow key={`${item.employee_id}-${item.date}`}>
                       <TableCell>{item.employee_id}</TableCell>
-                      <TableCell className="font-medium">
-                        {item.employee_name}
-                      </TableCell>
-                      <TableCell>{item.role_name ?? "—"}</TableCell>
+                      <TableCell className="font-medium">{item.employee?.employee_name}</TableCell>
+                      <TableCell>{item.employee?.role_id ?? "—"}</TableCell>
                       <TableCell>{item.shift_on}</TableCell>
                       <TableCell>{item.shift_off}</TableCell>
                       <TableCell>{item.total_hours}</TableCell>

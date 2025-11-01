@@ -6,21 +6,8 @@ import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { addCategory, getCategory } from "@/services/categoryService";
 import type { Category, Identifier } from "@/services/types";
@@ -57,7 +44,7 @@ const Categories = () => {
 
       try {
         setIsLoading(true);
-        const { data } = await getCategory(categoryId as Identifier);
+        const { data } = await getCategory({ category_id: Number(categoryId) });
         const category = data as Category;
         form.reset({
           category_name: category.category_name ?? "",
@@ -78,7 +65,7 @@ const Categories = () => {
   const handleSubmit = async (values: CategoryFormValues) => {
     try {
       setIsSubmitting(true);
-      const promise = addCategory(values.category_name.trim());
+      const promise = addCategory({ category_name: values.category_name.trim() });
       Toast.promise(promise, {
         loading: "Saving category…",
         success: "Category saved successfully",
@@ -96,9 +83,7 @@ const Categories = () => {
   return (
     <Card className="w-full max-w-xl">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">
-          {isEditing ? "Edit Category" : "Add New Category"}
-        </CardTitle>
+        <CardTitle className="text-xl font-semibold">{isEditing ? "Edit Category" : "Add New Category"}</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -108,10 +93,7 @@ const Categories = () => {
           </div>
         ) : (
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleSubmit)}
-              className="space-y-6"
-            >
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="category_name"
@@ -129,17 +111,11 @@ const Categories = () => {
 
               <CardFooter className="px-0">
                 <div className="flex w-full items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.back()}
-                  >
+                  <Button type="button" variant="outline" onClick={() => router.back()}>
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Category
                   </Button>
                 </div>
