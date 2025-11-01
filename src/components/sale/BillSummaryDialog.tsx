@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import UserContext from "@/context/UserContext";
 import { OrderSummary } from "../screens/sale/cashierSalePage";
+import { sendToPrint } from "@/services/printerService";
 
 type BillSummaryDialogProps = {
   orderSummary: OrderSummary;
@@ -140,6 +141,7 @@ const BillSummaryDialog = ({ open, onOpenChange, orderSummary, triggerButton, on
           <Button
             type="button"
             variant="secondary"
+            onClick={() => sendToPrint()}
             // disabled={isChangeNegative || !receiptData}
             // onClick={() => {
             //   if (!receiptData) return;
