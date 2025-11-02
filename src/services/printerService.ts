@@ -2,11 +2,12 @@ import http from "./httpService";
 import { Category } from "@/types/prisma-types";
 import { API_RESPONSE } from "@/types/common-types";
 import { CategoryAddRequest, CategoryGetRequest } from "@/types/request-types";
+import axios from "axios";
 
-const RESOURCE = "/print-receipt";
+const RESOURCE = "http://localhost:3333/print-receipt";
 
 export const sendToPrint = async () => {
-  const response = await http.post<API_RESPONSE<any>>(RESOURCE, {
+  const response = await axios.post(RESOURCE, {
     lines: [
       {
         text: "KAST COFFEE",
