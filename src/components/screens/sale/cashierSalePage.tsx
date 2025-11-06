@@ -19,6 +19,7 @@ import BillSummaryDialog from "@/components/sale/BillSummaryDialog";
 import { InsertSalesPayload, SalesOrderDetails, SalesProductLine } from "@/types/sale-types";
 import { Customer, Product_Variant, ProductDetails } from "@/types/prisma-types";
 import { SortDirection } from "@/types/common-types";
+import { sendToPrint } from "@/services/printerService";
 
 type SortColumn = {
   path: string;
@@ -356,6 +357,51 @@ const CashierSalePage = () => {
     }
   };
 
+  const handlePrintOrder = async () => {
+    if (!validateOrder()) return;
+    if (!currentUser?.employee_id || !currentUser?.branch_id) {
+      Toast.error("Missing cashier information. Please sign in again.");
+      return;
+    }
+
+    const order: SalesOrderDetails = {
+      customer_id: customer && customer.customer_id !== 0 ? customer.customer_id : undefined,
+      cashier_id: currentUser.employee_id,
+      total_amount: totals.grandTotal.toFixed(2),
+      payment_method: paymentMethod,
+      reference: paymentDetails,
+      branch_id: currentUser.branch_id,
+      rewards_points: rewardsPoints.toFixed(2),
+      product_count: totals.quantity,
+      credit_payment: paymentMethod === "credit" ? creditRepayment || "0" : undefined,
+    };
+
+    const orderedProducts: SalesProductLine[] = cart.map((product) => ({
+      product_id: product.product_id,
+      quantity: product.quantity,
+      variant_id: product.variant.variant_id,
+    }));
+
+    const payload: InsertSalesPayload = {
+      order,
+      products: orderedProducts,
+    };
+
+    try {
+      const promise = sendToPrint(payload);
+
+      Toast.promise(promise, {
+        success: "Order Printed",
+        error: (error) => error.response?.data?.error ?? "Failed to print order",
+      });
+
+      await promise;
+    } catch (error) {
+      console.error("Failed to print order", error);
+      Toast.error("Unable to print the order. Please try again.");
+    }
+  };
+
   const isCashPayment = paymentMethod === "cash" || paymentMethod === "loyalty";
   const parsedPaymentDetails = Number(paymentDetails) || 0;
 
@@ -653,6 +699,7 @@ const CashierSalePage = () => {
                 onOpenChange={setIsSummaryOpen}
                 orderSummary={orderSummary}
                 onSubmit={handlePlaceOrder}
+                onPrint={handlePrintOrder}
                 triggerButton={
                   <Button className="w-full py-6 text-lg font-semibold" disabled={billButtonDisabled}>
                     Bill

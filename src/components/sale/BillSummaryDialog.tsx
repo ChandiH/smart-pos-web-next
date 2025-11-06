@@ -13,7 +13,6 @@ import {
 } from "@/components/ui";
 import UserContext from "@/context/UserContext";
 import { OrderSummary } from "../screens/sale/cashierSalePage";
-import { sendToPrint } from "@/services/printerService";
 
 type BillSummaryDialogProps = {
   orderSummary: OrderSummary;
@@ -21,11 +20,19 @@ type BillSummaryDialogProps = {
   onOpenChange: (open: boolean) => void;
   triggerButton: ReactNode;
   onSubmit: () => void;
+  onPrint: () => void;
 };
 
 const formatCurrency = (value: number) => `Rs. ${Number.isFinite(value) ? value.toFixed(2) : "0.00"}`;
 
-const BillSummaryDialog = ({ open, onOpenChange, orderSummary, triggerButton, onSubmit }: BillSummaryDialogProps) => {
+const BillSummaryDialog = ({
+  open,
+  onOpenChange,
+  orderSummary,
+  triggerButton,
+  onSubmit,
+  onPrint,
+}: BillSummaryDialogProps) => {
   const { currentUser } = useContext(UserContext);
   const { totals, rewardsPoints, paymentMethod, paymentDetails, creditRepayment } = orderSummary;
 
@@ -141,7 +148,7 @@ const BillSummaryDialog = ({ open, onOpenChange, orderSummary, triggerButton, on
           <Button
             type="button"
             variant="secondary"
-            onClick={() => sendToPrint()}
+            onClick={onPrint}
             // disabled={isChangeNegative || !receiptData}
             // onClick={() => {
             //   if (!receiptData) return;
