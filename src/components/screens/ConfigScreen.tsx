@@ -16,6 +16,7 @@ import { getSuppliers } from "@/services/supplierService";
 import { getAllBranches } from "@/services/branchService";
 import { getMobileAppQrURL } from "@/services/imageHandler";
 import { updateRewardsPointsPercentage, getRewardsPointsPercentage } from "@/services/orderService";
+import EmailScheduler from "@/components/config/EmailScheduler";
 import UserContext from "@/context/UserContext";
 import { Toast } from "../ui";
 import { Branch, Category, RewardsPointsSetting } from "@/services/types";
@@ -325,6 +326,9 @@ const ConfigScreen = () => {
               )}
             </CardContent>
           </Card>
+          
+          {/* Add Email Scheduler here */}
+          <EmailScheduler />
 
           <Card>
             <CardHeader>
