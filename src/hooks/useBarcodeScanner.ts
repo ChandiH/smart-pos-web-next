@@ -1,10 +1,25 @@
+// useBarcodeScanner.ts
 import { useCallback, useEffect, useRef } from "react";
 
+/**
+ * Configuration defaults
+ */
 const DEFAULT_SCAN_TIMEOUT = 50;
 const DEFAULT_MIN_LENGTH = 4;
 const DEFAULT_BAUD_RATE = 9600;
-const DEFAULT_RECONNECT_INTERVAL = 30000;
+const DEFAULT_RECONNECT_INTERVAL = 30_000;
 
+/**
+ * Global singletons so multiple hook instances share one serial connection/reader
+ */
+let GLOBAL_SERIAL_PORT: SerialPort | null = null;
+let GLOBAL_SERIAL_READER: ReadableStreamDefaultReader<Uint8Array> | null = null;
+let GLOBAL_IS_OPENING = false;
+let GLOBAL_IS_READING = false;
+
+/**
+ * Types
+ */
 type BarcodeAccessor<T> = (item: T) => string | null | undefined;
 type ScanSuccessHandler<T> = (item: T, barcode: string) => void;
 type ScanFailureHandler = (barcode: string) => void;
@@ -28,16 +43,9 @@ type SerialRuntimeConfig = {
   requestOnConnect: boolean;
 };
 
-type SerialPortLike = {
-  readable?: ReadableStream<Uint8Array> | null;
-  writable?: WritableStream<Uint8Array> | null;
-  open: (options: { baudRate: number }) => Promise<void>;
-  close: () => Promise<void>;
-};
-
 type SerialApi = {
-  getPorts: () => Promise<SerialPortLike[]>;
-  requestPort: () => Promise<SerialPortLike>;
+  getPorts: () => Promise<SerialPort[]>;
+  requestPort: (options?: unknown) => Promise<SerialPort>;
 };
 
 export type UseBarcodeScannerOptions<T> = {
@@ -58,30 +66,20 @@ export type UseBarcodeScannerReturn = {
 };
 
 const getFallbackBarcode = (item: unknown): string | undefined => {
-  if (!item || typeof item !== "object") {
-    return undefined;
-  }
-
+  if (!item || typeof item !== "object") return undefined;
   const candidate = item as Record<string, unknown>;
-  const rawValue =
-    candidate.product_barcode ?? candidate.barcode ?? candidate.id;
-
-  if (typeof rawValue === "number") {
-    return String(rawValue);
-  }
-
+  const rawValue = candidate.product_barcode ?? candidate.barcode ?? candidate.id;
+  if (typeof rawValue === "number") return String(rawValue);
   return typeof rawValue === "string" ? rawValue : undefined;
 };
 
 const getSerialApi = (): SerialApi | null => {
-  if (typeof navigator === "undefined") {
-    return null;
-  }
-  const serialNavigator = navigator as Navigator & { serial?: SerialApi };
-  return serialNavigator.serial ?? null;
+  if (typeof navigator === "undefined") return null;
+  const nav = navigator as Navigator & { serial?: SerialApi };
+  return nav.serial ?? null;
 };
 
-const DEFAULT_SERIAL_CONFIG: SerialRuntimeConfig = {
+const DEFAULT_SERIAL_RUNTIME: SerialRuntimeConfig = {
   enabled: true,
   baudRate: DEFAULT_BAUD_RATE,
   reconnectIntervalMs: DEFAULT_RECONNECT_INTERVAL,
@@ -89,8 +87,7 @@ const DEFAULT_SERIAL_CONFIG: SerialRuntimeConfig = {
 };
 
 /**
- * Listens to keyboard events and Web Serial API streams to detect barcode scans.
- * Invokes callbacks when a matching barcode is found or when a scan does not match anything.
+ * Hook
  */
 const useBarcodeScanner = <T,>({
   enabled = true,
@@ -104,50 +101,43 @@ const useBarcodeScanner = <T,>({
   onSerialUnsupported,
   onSerialError,
 }: UseBarcodeScannerOptions<T> = {}): UseBarcodeScannerReturn => {
+  // --- keyboard scanner state (per-hook)
   const keyboardBufferRef = useRef("");
-  const serialBufferRef = useRef("");
   const lastKeyTimeRef = useRef(0);
+
+  // --- serial buffer and runtime refs
+  const serialBufferRef = useRef("");
+
+  // keep stable refs for latest values / callbacks
   const itemsRef = useRef<T[]>(items);
   const getBarcodeRef = useRef<BarcodeAccessor<T> | undefined>(getBarcode);
-  const onScanSuccessRef = useRef<ScanSuccessHandler<T> | undefined>(
-    onScanSuccess
-  );
-  const onScanFailureRef = useRef<ScanFailureHandler | undefined>(
-    onScanFailure
-  );
+  const onScanSuccessRef = useRef<ScanSuccessHandler<T> | undefined>(onScanSuccess);
+  const onScanFailureRef = useRef<ScanFailureHandler | undefined>(onScanFailure);
   const onSerialUnsupportedRef = useRef(onSerialUnsupported);
   const onSerialErrorRef = useRef(onSerialError);
+
   const optionsRef = useRef<ScannerOptions>({ scanTimeout, minBarcodeLength });
   const serialConfigRef = useRef<SerialRuntimeConfig>({
-    ...DEFAULT_SERIAL_CONFIG,
+    ...DEFAULT_SERIAL_RUNTIME,
     ...(serial ?? {}),
   });
-  const enabledRef = useRef(enabled);
+  const enabledRef = useRef<boolean>(enabled);
 
-  const portRef = useRef<SerialPortLike | null>(null);
-  const readerRef =
-    useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
-  const decoderRef = useRef(new TextDecoder());
-  const isConnectingRef = useRef(false);
-  const isReadingRef = useRef(false);
   const reconnectIntervalRef = useRef<number | null>(null);
-  const automaticRequestBlockedRef = useRef(false);
-  const serialUnsupportedNotifiedRef = useRef(false);
 
+  // --- helper to reset keyboard buffer
   const resetKeyboardBuffer = useCallback(() => {
     keyboardBufferRef.current = "";
     lastKeyTimeRef.current = 0;
   }, []);
 
+  // --- process a barcode string, attempt to match item or call failure handler
   const processScannedBarcode = useCallback((rawValue: string) => {
     const barcode = rawValue.trim();
-    if (!barcode) {
-      return;
-    }
+    if (!barcode) return;
 
     const matchedItem = itemsRef.current.find((item) => {
-      const candidate =
-        getBarcodeRef.current?.(item) ?? getFallbackBarcode(item);
+      const candidate = getBarcodeRef.current?.(item) ?? getFallbackBarcode(item);
       return candidate === barcode;
     });
 
@@ -158,200 +148,180 @@ const useBarcodeScanner = <T,>({
     }
   }, []);
 
-  const ensurePortOpen = useCallback(async (serialPort: SerialPortLike) => {
-    if (serialPort.readable) {
-      return;
-    }
-
-    try {
-      await serialPort.open({ baudRate: serialConfigRef.current.baudRate });
-    } catch (error) {
-      onSerialErrorRef.current?.(error);
-      console.error("Failed to open serial port:", error);
-      throw error;
-    }
-  }, []);
-
-  const handleBarcodeMatch = useCallback(
-    (rawValue: string) => {
-      processScannedBarcode(rawValue);
-    },
-    [processScannedBarcode]
-  );
-
-  const handleIncomingChunk = useCallback(
-    (chunk: string) => {
-    serialBufferRef.current += chunk;
-    const normalized = serialBufferRef.current.replace(/\r\n/g, "\n");
-    const parts = normalized.split(/\r|\n/);
-
-    for (let index = 0; index < parts.length - 1; index += 1) {
-      const line = parts[index]?.trim();
-      if (line) {
-        handleBarcodeMatch(line);
-      }
-    }
-
-    serialBufferRef.current = parts[parts.length - 1] ?? "";
-    },
-    [handleBarcodeMatch]
-  );
-
-  const stopReading = useCallback(async () => {
-    const reader = readerRef.current;
-    readerRef.current = null;
-    serialBufferRef.current = "";
-    isReadingRef.current = false;
-
-    if (!reader) {
-      return;
-    }
-
-    try {
-      await reader.cancel();
-    } catch (error) {
-      onSerialErrorRef.current?.(error);
-      console.warn("Error cancelling reader:", error);
-    }
-
-    try {
-      reader.releaseLock();
-    } catch (error) {
-      onSerialErrorRef.current?.(error);
-      console.warn("Error releasing reader lock:", error);
-    }
-  }, []);
-
-  const startReading = useCallback(
-    async (activePort: SerialPortLike | null = portRef.current) => {
-    if (
-      !activePort ||
-      !enabledRef.current ||
-      !serialConfigRef.current.enabled ||
-      isReadingRef.current ||
-      !activePort.readable
-    ) {
-      return;
-    }
-
-    serialBufferRef.current = "";
-    isReadingRef.current = true;
-    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-
-    try {
-      reader = activePort.readable.getReader();
-      readerRef.current = reader;
-
-      while (enabledRef.current) {
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-        if (value) {
-          const chunk = decoderRef.current.decode(value, { stream: true });
-          handleIncomingChunk(chunk);
-        }
-      }
-    } catch (error) {
-      onSerialErrorRef.current?.(error);
-      console.error("Read loop error:", error);
-    } finally {
-      serialBufferRef.current = "";
-      if (reader) {
-        try {
-          reader.releaseLock();
-        } catch (error) {
-          onSerialErrorRef.current?.(error);
-          console.warn("Error releasing reader lock:", error);
-        }
-      }
-
-      readerRef.current = null;
-      isReadingRef.current = false;
-
-      if (!activePort.readable && portRef.current === activePort) {
-        portRef.current = null;
-      }
-    }
-    },
-    [handleIncomingChunk]
-  );
-
-  const connectPort = useCallback(async () => {
-    if (
-      isConnectingRef.current ||
-      portRef.current ||
-      !enabledRef.current ||
-      !serialConfigRef.current.enabled
-    ) {
-      return;
+  // --- Ensure a global serial port is opened (shares across hook instances)
+  const ensureGlobalPortOpen = useCallback(async (): Promise<SerialPort | null> => {
+    if (GLOBAL_SERIAL_PORT && GLOBAL_SERIAL_PORT.readable) {
+      return GLOBAL_SERIAL_PORT;
     }
 
     const serialApi = getSerialApi();
     if (!serialApi) {
-      if (!serialUnsupportedNotifiedRef.current) {
-        serialUnsupportedNotifiedRef.current = true;
-        onSerialUnsupportedRef.current?.();
-        console.warn("Web Serial API is not supported in this browser.");
-      }
-      return;
+      onSerialUnsupportedRef.current?.();
+      return null;
     }
 
-    isConnectingRef.current = true;
+    if (GLOBAL_IS_OPENING) {
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => setTimeout(r, 50));
+        if (GLOBAL_SERIAL_PORT?.readable) return GLOBAL_SERIAL_PORT;
+        if (!GLOBAL_IS_OPENING) break;
+      }
+    }
+
+    GLOBAL_IS_OPENING = true;
 
     try {
-      const availablePorts = await serialApi.getPorts();
-      let serialPort: SerialPortLike | null =
-        availablePorts.length > 0 ? availablePorts[0] : null;
+      // IMPORTANT:
+      // Option C → NEVER call requestPort().
+      // Only check getPorts() and auto-connect if allowed.
+      const ports = await serialApi.getPorts();
+      const port = ports[0] ?? null;
 
-      if (
-        !serialPort &&
-        serialConfigRef.current.requestOnConnect &&
-        !automaticRequestBlockedRef.current
-      ) {
+      if (!port) {
+        // Scanner not plugged OR permission not granted earlier.
+        // Do nothing — reconnect interval will retry automatically.
+        return null;
+      }
+
+      if (!port.readable) {
+        await port.open({ baudRate: serialConfigRef.current.baudRate });
+      }
+
+      GLOBAL_SERIAL_PORT = port;
+      return port;
+    } catch (error) {
+      onSerialErrorRef.current?.(error);
+      console.error("ensureGlobalPortOpen error:", error);
+      return null;
+    } finally {
+      GLOBAL_IS_OPENING = false;
+    }
+  }, []);
+
+  // --- Start the global read loop (single reader for all hook instances)
+  const startGlobalReadLoop = useCallback(
+    async (port: SerialPort) => {
+      if (!port) return;
+      if (!enabledRef.current) return;
+      if (!serialConfigRef.current.enabled) return;
+      if (GLOBAL_IS_READING) return;
+      if (!port.readable) return;
+
+      GLOBAL_IS_READING = true;
+      serialBufferRef.current = "";
+
+      try {
+        const reader = port.readable.getReader();
+        GLOBAL_SERIAL_READER = reader;
+
+        while (enabledRef.current && serialConfigRef.current.enabled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value && value.length) {
+            const chunk = new TextDecoder().decode(value, { stream: true });
+            serialBufferRef.current += chunk;
+            const normalized = serialBufferRef.current.replace(/\r\n/g, "\n");
+            const parts = normalized.split(/\r|\n/);
+            for (let i = 0; i < parts.length - 1; i += 1) {
+              const line = parts[i]?.trim();
+              if (line) processScannedBarcode(line);
+            }
+            serialBufferRef.current = parts[parts.length - 1] ?? "";
+          }
+        }
+      } catch (error) {
+        onSerialErrorRef.current?.(error);
+        console.error("Global read loop error:", error);
+      } finally {
+        // clean up reader
         try {
-          serialPort = await serialApi.requestPort();
-        } catch (error) {
-          automaticRequestBlockedRef.current = true;
-          onSerialErrorRef.current?.(error);
-          console.warn("Serial port permission request failed:", error);
-          return;
+          if (GLOBAL_SERIAL_READER) {
+            try {
+              await GLOBAL_SERIAL_READER.cancel();
+            } catch (_) {
+              // ignore
+            }
+            try {
+              GLOBAL_SERIAL_READER.releaseLock();
+            } catch (_) {
+              // ignore
+            }
+          }
+        } catch (_) {
+          // noop
+        }
+        GLOBAL_SERIAL_READER = null;
+        GLOBAL_IS_READING = false;
+
+        // If the port isn't readable anymore, drop the reference so it can reconnect later
+        try {
+          if (GLOBAL_SERIAL_PORT && !GLOBAL_SERIAL_PORT.readable) {
+            GLOBAL_SERIAL_PORT = null;
+          }
+        } catch (_) {
+          // ignore
         }
       }
+    },
+    [processScannedBarcode]
+  );
 
-      if (!serialPort) {
-        return;
-      }
-
-      await ensurePortOpen(serialPort);
-      portRef.current = serialPort;
-      await startReading(serialPort);
-    } catch (error) {
-      onSerialErrorRef.current?.(error);
-      console.error("Failed to connect to serial port:", error);
-    } finally {
-      isConnectingRef.current = false;
+  const stopGlobalReadLoop = useCallback(async () => {
+    if (!GLOBAL_SERIAL_READER) return;
+    try {
+      await GLOBAL_SERIAL_READER.cancel();
+    } catch (_) {
+      // ignore
     }
-  }, [ensurePortOpen, startReading]);
+    try {
+      GLOBAL_SERIAL_READER.releaseLock();
+    } catch (_) {
+      // ignore
+    }
+    GLOBAL_SERIAL_READER = null;
+    GLOBAL_IS_READING = false;
+  }, []);
 
-  const disconnectPort = useCallback(async () => {
-    const activePort = portRef.current;
-    await stopReading();
+  const disconnectGlobalPort = useCallback(async () => {
+    await stopGlobalReadLoop();
+    if (GLOBAL_SERIAL_PORT) {
+      try {
+        // close is asynchronous; some implementations require closing
+        await (GLOBAL_SERIAL_PORT as any).close?.();
+      } catch (err) {
+        console.warn("Error closing global serial port:", err);
+      } finally {
+        GLOBAL_SERIAL_PORT = null;
+      }
+    }
+  }, [stopGlobalReadLoop]);
 
-    if (!activePort) {
+  const connectAndStart = useCallback(async () => {
+    if (!enabledRef.current) return;
+    if (!serialConfigRef.current.enabled) return;
+
+    const serialApi = getSerialApi();
+    if (!serialApi) {
+      onSerialUnsupportedRef.current?.();
+      console.warn("Web Serial API not available");
+      return;
+    }
+
+    if (GLOBAL_SERIAL_PORT && GLOBAL_IS_READING) {
       return;
     }
 
     try {
-      await activePort.close();
-    } catch (error) {
-      onSerialErrorRef.current?.(error);
-      console.warn("Error closing serial port:", error);
-    } finally {
-      portRef.current = null;
+      const port = await ensureGlobalPortOpen();
+      if (!port) return;
+      await startGlobalReadLoop(port);
+    } catch (err) {
+      onSerialErrorRef.current?.(err);
+      console.error("connectAndStart error:", err);
     }
-  }, [stopReading]);
+  }, [ensureGlobalPortOpen, startGlobalReadLoop]);
 
+  // --- Keep refs up to date whenever inputs change (so callbacks always see latest data)
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
@@ -369,17 +339,6 @@ const useBarcodeScanner = <T,>({
   }, [onScanFailure]);
 
   useEffect(() => {
-    optionsRef.current = { scanTimeout, minBarcodeLength };
-  }, [scanTimeout, minBarcodeLength]);
-
-  useEffect(() => {
-    serialConfigRef.current = {
-      ...DEFAULT_SERIAL_CONFIG,
-      ...(serial ?? {}),
-    };
-  }, [serial]);
-
-  useEffect(() => {
     onSerialUnsupportedRef.current = onSerialUnsupported;
   }, [onSerialUnsupported]);
 
@@ -388,30 +347,38 @@ const useBarcodeScanner = <T,>({
   }, [onSerialError]);
 
   useEffect(() => {
-    enabledRef.current = enabled;
-  }, [enabled, processScannedBarcode, resetKeyboardBuffer]);
+    optionsRef.current = { scanTimeout, minBarcodeLength };
+  }, [scanTimeout, minBarcodeLength]);
 
   useEffect(() => {
-    if (!enabled || typeof window === "undefined") {
-      return undefined;
-    }
+    serialConfigRef.current = {
+      ...DEFAULT_SERIAL_RUNTIME,
+      ...(serial ?? {}),
+    };
+  }, [serial]);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  // --- Keyboard scanning (listens for quick key sequences ending with Enter)
+  useEffect(() => {
+    if (!enabled) return undefined;
+    if (typeof window === "undefined") return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const now = Date.now();
-      const { scanTimeout: timeout, minBarcodeLength: minLength } =
-        optionsRef.current;
+      const { scanTimeout: timeout, minBarcodeLength: minLength } = optionsRef.current;
 
       if (event.key === "Enter") {
-        const isPotentialScan =
+        const maybeScan =
           keyboardBufferRef.current.length >= minLength &&
           now - lastKeyTimeRef.current <= timeout;
 
-        if (isPotentialScan) {
+        if (maybeScan) {
           event.preventDefault();
-          const scannedBarcode = keyboardBufferRef.current;
-          processScannedBarcode(scannedBarcode);
+          processScannedBarcode(keyboardBufferRef.current);
         }
-
         resetKeyboardBuffer();
         return;
       }
@@ -425,51 +392,40 @@ const useBarcodeScanner = <T,>({
         resetKeyboardBuffer();
       }
 
-      const isPrintableKey =
-        event.key.length === 1 && !event.ctrlKey && !event.metaKey;
-
-      if (isPrintableKey) {
+      const isPrintable = event.key.length === 1 && !event.ctrlKey && !event.metaKey;
+      if (isPrintable) {
         keyboardBufferRef.current += event.key;
         lastKeyTimeRef.current = now;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       resetKeyboardBuffer();
     };
   }, [enabled, processScannedBarcode, resetKeyboardBuffer]);
 
+  // --- Serial lifecycle: connect/start and reconnection loop
   useEffect(() => {
-    if (
-      !enabled ||
-      typeof window === "undefined" ||
-      typeof navigator === "undefined"
-    ) {
-      return () => {
-        void disconnectPort();
-      };
+    if (!enabled) {
+      void stopGlobalReadLoop();
+      return undefined;
     }
 
     if (!serialConfigRef.current.enabled) {
-      return () => {
-        void disconnectPort();
-      };
+      void disconnectGlobalPort();
+      return undefined;
     }
 
-    void connectPort();
+    void connectAndStart();
 
     const intervalId = window.setInterval(() => {
-      if (
-        !enabledRef.current ||
-        portRef.current ||
-        !serialConfigRef.current.enabled
-      ) {
-        return;
+      if (!enabledRef.current) return;
+      if (!serialConfigRef.current.enabled) return;
+      if (!GLOBAL_SERIAL_PORT) {
+        void connectAndStart();
       }
-      void connectPort();
     }, serialConfigRef.current.reconnectIntervalMs);
 
     reconnectIntervalRef.current = intervalId;
@@ -479,11 +435,15 @@ const useBarcodeScanner = <T,>({
         clearInterval(reconnectIntervalRef.current);
         reconnectIntervalRef.current = null;
       }
-      void disconnectPort();
+      if (!enabledRef.current) {
+        void stopGlobalReadLoop();
+      }
     };
-  }, [connectPort, disconnectPort, enabled, serial]);
+  }, [connectAndStart, disconnectGlobalPort, stopGlobalReadLoop, enabled]);
 
-  return { reset: resetKeyboardBuffer };
+  return {
+    reset: resetKeyboardBuffer,
+  };
 };
 
 export default useBarcodeScanner;

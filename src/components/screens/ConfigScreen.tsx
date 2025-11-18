@@ -59,8 +59,7 @@ const ConfigScreen = () => {
     try {
       setIsRewardsLoading(true);
       const { data } = await getRewardsPointsPercentage();
-      const settings = Array.isArray(data) ? (data as RewardSetting[]) : [];
-      const percentage = Number(settings[0]?.variable_value ?? 0);
+      const percentage = Number(data?.variable_value ?? 0);
       setRewardPercentage(percentage);
       setRewardDraft(percentage);
     } catch (error) {

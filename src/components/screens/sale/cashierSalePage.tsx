@@ -65,6 +65,8 @@ const CashierSalePage = () => {
   const customerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const receiptPrinterRef = useRef<ReceiptPrinterHandle | null>(null);
 
+  const [scannerMode, setScannerMode] = useState<"auto" | "customer" | "product">("auto");
+
   const [sortColumn, setSortColumn] = useState<SortColumn>({
     path: "product_name",
     order: "asc",
@@ -105,7 +107,7 @@ const CashierSalePage = () => {
       setProducts(availableProducts);
       setCustomers(customerList);
 
-      const percentage = Array.isArray(rewards) && rewards.length > 0 ? Number(rewards[0]?.variable_value ?? 0) : 0;
+      const percentage = Number(rewards?.variable_value ?? 0);
       setRewardsPointsPercentage(Number.isFinite(percentage) ? percentage : 0);
     } catch (error) {
       console.error("Failed to load cashier data", error);
@@ -123,8 +125,43 @@ const CashierSalePage = () => {
     void loadData();
   }, [loadData]);
 
+  const handleScannedValue = (barcode: string) => {
+    const cleaned = String(barcode ?? "").trim();
+    if (!cleaned) return;
+
+    const matchedProduct = products.find((p) => {
+      const raw = p.product_barcode;
+      if (raw === undefined || raw === null) return false;
+      return String(raw).trim() === cleaned;
+    });
+
+    if (matchedProduct) {
+      console.log("Detected product (priority):", cleaned, "=> productId:", matchedProduct.product_id);
+      setProductSearchQuery(cleaned);
+      setCustomerSearchFocused(false);
+      try {
+        handleVariantSelection(matchedProduct);
+      } catch (error) {
+      }
+      return;
+    }
+
+    // 👉 Exactly 10 digits → customer
+    if (/^\d{10}$/.test(cleaned)) {
+      console.log("Detected 10-digit customer barcode:", cleaned);
+      setCustomerSearchQuery(cleaned);
+      setCustomerSearchFocused(false);
+      return;
+    }
+
+    // 👉 Otherwise → product
+    console.log("Detected product barcode:", cleaned);
+    setProductSearchQuery(cleaned);
+    setCustomerSearchFocused(false);
+  };
+
   useBarcodeScanner<Customer>({
-    enabled: isCustomerSearchFocused && customers.length > 0,
+    enabled: (scannerMode === "customer" || (scannerMode === "auto" && isCustomerSearchFocused)) && customers.length > 0,
     items: customers,
     getBarcode: (item) => {
       const rawValue = item.customer_phone ?? item.customer_id;
@@ -148,21 +185,29 @@ const CashierSalePage = () => {
       });
       setCustomerSearchQuery(displayValue);
       setCustomer(matchedCustomer);
-      customerSearchInputRef.current?.blur();
+      //customerSearchInputRef.current?.blur();
+      setScannerMode("product");
+      setCustomerSearchFocused(false);
+      try {
+        customerSearchInputRef.current?.blur();
+      } catch (error) {
+        // ignore if DOM can't blur right now
+      }
     },
     onScanFailure: (scannedBarcode) => {
       const normalizedBarcode = scannedBarcode.trim();
       console.log("[BarcodeScanner][Customer] No match", {
         barcode: normalizedBarcode,
       });
-      setCustomerSearchQuery(normalizedBarcode);
-      setCustomer(null);
-      Toast.error("No customer matches the scanned barcode.");
+      handleScannedValue(scannedBarcode);
+      //setCustomerSearchQuery(normalizedBarcode);
+      //setCustomer(null);
+      //Toast.error("No customer matches the scanned barcode.");
     },
   });
 
   useBarcodeScanner<ProductDetails>({
-    enabled: !isCustomerSearchFocused && products.length > 0,
+    enabled: (scannerMode === "product" || (scannerMode === "auto" && !isCustomerSearchFocused)) && products.length > 0,
     items: products,
     getBarcode: (item) => {
       const rawValue = item.product_barcode;
@@ -189,8 +234,9 @@ const CashierSalePage = () => {
       console.log("[BarcodeScanner][Product] No match", {
         barcode: normalizedBarcode,
       });
-      setProductSearchQuery(normalizedBarcode);
-      Toast.error("No product matches the scanned barcode.");
+      handleScannedValue(scannedBarcode);
+      //setProductSearchQuery(normalizedBarcode);
+      //Toast.error("No product matches the scanned barcode.");
     },
   });
 
@@ -221,6 +267,28 @@ const CashierSalePage = () => {
 
     setCustomer(filteredCustomer ?? null);
   };
+
+  /* --- 🔧 FIXED: Auto-run customer search on barcode scan --- */
+  useEffect(() => {
+    if (!customerSearchQuery) {
+      setCustomer(null);
+      return;
+    }
+
+    const normalizedQuery = customerSearchQuery.trim();
+    const lowerQuery = normalizedQuery.toLowerCase();
+
+    const filteredCustomer = customers.find((item) => {
+      const matchesName = item.customer_name?.toLowerCase().startsWith(lowerQuery);
+      const matchesPhone =
+        item.customer_phone && String(item.customer_phone).trim() === normalizedQuery;
+
+      return Boolean(matchesName || matchesPhone);
+    });
+
+    setCustomer(filteredCustomer ?? null);
+  }, [customerSearchQuery, customers]);
+  /* ----------------------------------------------------------- */
 
   const onAddToCart = (productVariant: Product_Variant) => {
     setProductSearchQuery("");
@@ -267,9 +335,9 @@ const CashierSalePage = () => {
       return 0;
     }
 
-    const points = (totals.subtotal * rewardsPointsPercentage) / 100;
+    const points = (totals.grandTotal * rewardsPointsPercentage) / 100;
     return Number(points.toFixed(2));
-  }, [customer, totals.subtotal, rewardsPointsPercentage]);
+  }, [customer, totals.grandTotal, rewardsPointsPercentage]);
 
   const filteredProducts = useMemo(() => {
     if (!productSearchQuery) {
@@ -286,7 +354,16 @@ const CashierSalePage = () => {
     return orderBy(filtered, [sortColumn.path], [sortColumn.order]).slice(0, 3);
   }, [productSearchQuery, products, sortColumn]);
 
-  const validateOrder = () => cart.length > 0 && Boolean(paymentDetails);
+  const validateOrder = () => {
+      if (cart.length === 0) return false;
+      const hasCustomer = Boolean(customer);
+      const cash = Number(paymentDetails);
+      return ( 
+        (paymentMethod === "cash" && (hasCustomer || cash > 0)) ||                    
+        (paymentMethod === "debitCard" && cash > 0) ||                                
+        ((paymentMethod === "credit" || paymentMethod === "loyalty") && hasCustomer)
+      );
+    };
 
   const paymentHandler = (method: PaymentMethod) => {
     if (paymentMethod === method) return;
@@ -572,8 +649,14 @@ const CashierSalePage = () => {
                   ref={customerSearchInputRef}
                   value={customerSearchQuery}
                   onChange={(event) => handleCustomerSearch(event.target.value)}
-                  onFocus={() => setCustomerSearchFocused(true)}
-                  onBlur={() => setCustomerSearchFocused(false)}
+                  onFocus={() => {
+                    setCustomerSearchFocused(true);
+                    setScannerMode("auto");
+                  }}
+                  onBlur={() => {
+                    setCustomerSearchFocused(false);
+                    setScannerMode("auto");
+                  }}
                   placeholder="Search customers (name or contact)"
                 />
               </div>
