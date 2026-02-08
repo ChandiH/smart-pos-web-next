@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useState, useEffect, useRef } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Minus, Plus, Trash2 } from "lucide-react";
 
 import CartContext, { ProductCartItem } from "@/context/CartContext";
@@ -37,12 +37,19 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
 
   const orderedCart = useMemo(() => [...cart].reverse(), [cart]);
 
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const prevCartLength = useRef<number>(cart.length);
+
+  // -----------------------------
+  // Cart operations
+  // -----------------------------
   const updateCartItem = (product: ProductCartItem, quantity: number) => {
-    const cartCopy = [...cart];
-    const index = cartCopy.findIndex((item) => item.product_id === product.product_id);
+    const copy = [...cart];
+    const index = copy.findIndex((item) => item.product_id === product.product_id);
     if (index === -1) return;
-    cartCopy[index] = { ...cartCopy[index], quantity };
-    setCart(cartCopy);
+    copy[index] = { ...copy[index], quantity };
+    setCart(copy);
   };
 
   const handleIncrement = (product: ProductCartItem) => {
@@ -54,35 +61,99 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
   };
 
   const handleRemove = (product: ProductCartItem) => {
-    const cartCopy = [...cart];
-    const index = cartCopy.findIndex((item) => item.product_id === product.product_id);
+    const copy = [...cart];
+    const index = copy.findIndex((item) => item.product_id === product.product_id);
     if (index === -1) return;
-    cartCopy.splice(index, 1);
-    setCart(cartCopy);
+    copy.splice(index, 1);
+    setCart(copy);
+    setSelectedIndex((prev) => {
+      if (prev === null) return null;
+      if (prev > index) return prev - 1;
+      if (prev === index) return null;
+      return prev;
+    });
   };
 
+  // -----------------------------
+  // Sorting
+  // -----------------------------
   const handleSort = (path: string) => {
     if (!onSort) return;
-
     const nextColumn: SortColumn = sortColumn ? { ...sortColumn } : { path, order: "asc" };
-
     if (nextColumn.path === path) {
       nextColumn.order = nextColumn.order === "asc" ? "desc" : "asc";
     } else {
       nextColumn.path = path;
       nextColumn.order = "asc";
     }
-
     onSort(nextColumn);
   };
 
   const renderSortIcon = (path: string) => {
-    if (!sortColumn || sortColumn.path !== path) {
-      return <ArrowUpDown className="h-3.5 w-3.5" />;
-    }
-
+    if (!sortColumn || sortColumn.path !== path) return <ArrowUpDown className="h-3.5 w-3.5" />;
     return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
   };
+
+  // -----------------------------
+  // Auto-select newly added item only once
+  // -----------------------------
+  useEffect(() => {
+    if (cart.length > prevCartLength.current) {
+      // New item added, select newest item
+      setSelectedIndex(0);
+      setEditingIndex(null);
+    }
+    prevCartLength.current = cart.length;
+  }, [cart]);
+
+  // -----------------------------
+  // Keyboard shortcuts
+  // -----------------------------
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!orderedCart.length) return;
+      if (selectedIndex === null) return;
+      const selectedProduct = orderedCart[selectedIndex];
+
+      // Arrow navigation
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev === null ? 0 : Math.min(prev + 1, orderedCart.length - 1)));
+        setEditingIndex(null);
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev === null ? 0 : Math.max(prev - 1, 0)));
+        setEditingIndex(null);
+      }
+
+      // Increment / decrement quantity
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleIncrement(selectedProduct);
+      }
+
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handleDecrement(selectedProduct);
+      }
+
+      // Ctrl key → focus quantity input for non-items
+      if (e.ctrlKey && selectedProduct.stock_type?.toLowerCase() !== "items" && selectedProduct.stock_type?.toLowerCase() !== "items") {
+        e.preventDefault();
+        setEditingIndex(selectedIndex);
+        const inputEl = document.getElementById(`cart-qty-${selectedIndex}`) as HTMLInputElement | null;
+        if (inputEl) {
+          inputEl.focus();
+          inputEl.select();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [orderedCart, selectedIndex]);
 
   return (
     <Table>
@@ -125,53 +196,42 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {orderedCart.map((product) => {
+        {orderedCart.map((product, index) => {
           const total = (product.quantity ?? 0) * (Number(product.variant.retail_price) ?? 0);
-
           return (
-            <TableRow key={product.product_id}>
+            <TableRow
+              key={product.product_id}
+              className={selectedIndex === index ? "bg-blue-100 dark:bg-blue-900" : ""}
+              onClick={() => setSelectedIndex(index)}
+            >
               <TableCell className="font-mono text-sm">{product.product_barcode ?? "-"}</TableCell>
               <TableCell className="font-medium">{product.product_name}</TableCell>
               <TableCell className="text-right">{formatCurrency(Number(product.variant.retail_price) ?? 0)}</TableCell>
               <TableCell className="text-right">{formatCurrency(Number(product.variant.discount) ?? 0)}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    data-testid="decrement"
-                    onClick={() => handleDecrement(product)}
-                  >
+                  <Button type="button" size="icon" variant="outline" onClick={() => handleDecrement(product)}>
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Input
+                    id={`cart-qty-${index}`}
                     type="number"
-                    readOnly={product.stock_type == "items"}
+                    readOnly={product.stock_type === "items"}
                     value={product.quantity}
                     className="h-9 w-32 text-center"
-                    onChange={(e) => updateCartItem(product, Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) updateCartItem(product, val);
+                    }}
                   />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    data-testid="increment"
-                    onClick={() => handleIncrement(product)}
-                  >
+                  <Button type="button" size="icon" variant="outline" onClick={() => handleIncrement(product)}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </TableCell>
               <TableCell className="text-right">{formatCurrency(total)}</TableCell>
               <TableCell className="text-right">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="destructive"
-                  onClick={() => handleRemove(product)}
-                  data-testid="remove"
-                >
+                <Button type="button" size="icon" variant="destructive" onClick={() => handleRemove(product)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TableCell>
@@ -180,7 +240,7 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
         })}
         {orderedCart.length === 0 && (
           <TableRow>
-            <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
+            <TableCell colSpan={7} className="py-6 text-center text-sm text-muted-foreground">
               Cart is empty.
             </TableCell>
           </TableRow>
