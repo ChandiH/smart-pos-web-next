@@ -591,6 +591,86 @@ const CashierSalePage = () => {
     return false;
   }, [cart.length, paymentMethod, customer, parsedPaymentDetails, totals.grandTotal, creditRepayment]);
 
+  // -----------------------------
+  // Global keyboard handlers
+  // -----------------------------
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ignore if modifier keys used
+      if (e.altKey || e.metaKey) return;
+
+      // -----------------------------
+      // PAYMENT SHORTCUTS
+      // -----------------------------
+      if (e.key === "F1") {
+        e.preventDefault();
+        paymentHandler("cash");
+        return;
+      }
+      if (e.key === "F2") {
+        e.preventDefault();
+        paymentHandler("debitCard");
+        return;
+      }
+      if (e.key === "F3") {
+        e.preventDefault();
+        if (customer) paymentHandler("credit");
+        return;
+      }
+
+      // -----------------------------
+      // NUMPAD + → Add/Confirm product
+      // -----------------------------
+      if (e.code === "NumpadAdd") {
+        e.preventDefault();
+
+        // No variant modal → add first filtered product
+        if (!variantModel && filteredProducts.length > 0) {
+          handleVariantSelection(filteredProducts[0]);
+          return;
+        }
+
+        // Only one product filtered → select it
+        if (document.activeElement?.id === "product-search" && filteredProducts.length === 1) {
+          handleVariantSelection(filteredProducts[0]);
+        }
+
+        return;
+      }
+
+      // -----------------------------
+      // ENTER → Navigation flow
+      // -----------------------------
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const current = document.activeElement?.id;
+
+        if (current === "product-search") {
+          document.getElementById("customer-search")?.focus();
+        } else if (current === "customer-search") {
+          document.getElementById("payment-details-reference")?.focus();
+        } else if (paymentMethod === "credit" && current === "payment-details-reference") {
+          document.getElementById("credit-repayment")?.focus();
+        } else if (current === "credit-repayment" || current === "payment-details-reference") {
+          document.getElementById("bill-button")?.focus();
+        } else {
+          document.getElementById("product-search")?.focus();
+        }
+
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    filteredProducts,
+    variantModel,
+    pendingVariantProduct,
+    paymentMethod,
+    customer
+  ]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-row gap-6 xl:grid-cols-[2fr_1fr]">
@@ -767,9 +847,9 @@ const CashierSalePage = () => {
                     value={paymentDetails}
                     onChange={(event) => setPaymentDetails(event.target.value)}
                   />
-                  <Label htmlFor="payment-details">Repayment</Label>
+                  <Label htmlFor="credit-repayment">Repayment</Label>
                   <Input
-                    id="payment-details-reference"
+                    id="credit-repayment"
                     type={paymentInputType}
                     placeholder={"Repayment Amount"}
                     value={creditRepayment}
@@ -784,7 +864,7 @@ const CashierSalePage = () => {
                 onSubmit={handlePlaceOrder}
                 onPrint={handlePrintOrder}
                 triggerButton={
-                  <Button className="w-full py-6 text-lg font-semibold" disabled={billButtonDisabled}>
+                  <Button id="bill-button" className="w-full py-6 text-lg font-semibold" disabled={billButtonDisabled}>
                     Bill
                   </Button>
                 }

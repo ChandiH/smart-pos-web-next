@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Button,
   Dialog,
@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui";
-import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { Product_Variant, ProductDetails } from "@/types/prisma-types";
 import { SortDirection } from "@/types/common-types";
 
@@ -62,72 +62,106 @@ const columns: ColumnConfig[] = [
 ];
 
 const VariantSelectionModel = ({ open, product, onOpenChange, onSelect }: VariantSelectionModelProps) => {
+  const [sortColumn, setSortColumn] = useState<SortColumn>({ path: "variant_id", order: "asc" });
+  const [highlightIndex, setHighlightIndex] = useState<number>(0);
+
+  // Auto-select if ONLY ONE variant
   useEffect(() => {
     if (product && product.variants.length === 1 && onSelect) {
       onSelect(product.variants[0]);
     }
-  }, [onSelect, product]);
+  }, [product, onSelect]);
 
-  const [sortColumn, setSortColumn] = useState<SortColumn>({
-    path: "variant_id",
-    order: "asc",
-  });
+  // Reset highlight when opening modal
+  useEffect(() => {
+    if (open) setHighlightIndex(0);
+  }, [open]);
 
   const handleSort = (path: SortColumn["path"]) => {
-    setSortColumn((prev) => {
-      if (prev.path === path) {
-        return {
-          path,
-          order: prev.order === "asc" ? "desc" : "asc",
-        };
-      }
-      return { path, order: "asc" };
-    });
+    setSortColumn(prev =>
+      prev.path === path
+        ? { path, order: prev.order === "asc" ? "desc" : "asc" }
+        : { path, order: "asc" },
+    );
   };
 
   const renderSortIcon = (column: ColumnConfig) => {
-    if (!column.sortable || !column.path) {
-      return null;
-    }
+    if (!column.sortable || !column.path) return null;
+    if (sortColumn.path !== column.path) return <ArrowUpDown className="h-3.5 w-3.5" />;
 
-    if (sortColumn.path !== column.path) {
-      return <ArrowUpDown className="h-3.5 w-3.5" />;
-    }
-
-    return sortColumn.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
+    return sortColumn.order === "asc"
+      ? <ArrowUp className="h-3.5 w-3.5" />
+      : <ArrowDown className="h-3.5 w-3.5" />;
   };
 
-  const getVariantField = (variant: Product_Variant, ...keys: (keyof Product_Variant | string)[]) => {
-    for (const key of keys) {
-      if (key in variant) {
-        const value = variant[key as keyof Product_Variant];
-        if (value !== undefined && value !== null && value !== "") {
-          return value;
+  // ------------- 🔥 KEYBOARD SHORTCUTS (1–9 + ENTER + ESC) -------------
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!open || !product) return;
+
+      const count = product.variants.length;
+
+      // number keys (1–9)
+      if (/^[1-9]$/.test(e.key)) {
+        const index = Number(e.key) - 1;
+        if (index < count) {
+          e.preventDefault();
+          onSelect?.(product.variants[index]);
         }
       }
-    }
-    return undefined;
-  };
 
-  if (!product) {
-    return null;
-  }
+      // Enter = pick highlighted variant
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (product.variants[highlightIndex]) {
+          onSelect?.(product.variants[highlightIndex]);
+        }
+      }
+
+      // ESC to close modal
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onOpenChange(false);
+      }
+
+      // Arrow navigation
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightIndex(i => Math.min(i + 1, count - 1));
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightIndex(i => Math.max(i - 1, 0));
+      }
+    },
+    [open, product, highlightIndex, onSelect, onOpenChange]
+  );
+
+  // Attach keyboard listener ONLY when modal is open
+  useEffect(() => {
+    if (open) window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onKeyDown]);
+
+  if (!product) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full sm:w-auto max-w-[min(90vw,_72rem)]">
+      <DialogContent className="w-full sm:w-auto max-w-[min(90vw,72rem)]">
         <DialogHeader>
-          <DialogTitle>Product Variants</DialogTitle>
+          <DialogTitle>Select Variant</DialogTitle>
         </DialogHeader>
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                {columns.map((column) => (
+                {columns.map(column => (
                   <TableHead
                     key={column.key}
                     className={column.sortable ? "cursor-pointer" : undefined}
-                    onClick={() => column.sortable && column.path && handleSort(column.path)}
+                    onClick={() => column.path && handleSort(column.path)}
                   >
                     <span className="flex items-center gap-1">
                       {column.label}
@@ -138,16 +172,18 @@ const VariantSelectionModel = ({ open, product, onOpenChange, onSelect }: Varian
               </TableRow>
             </TableHeader>
             <TableBody>
-              {product.variants?.map((variant, index) => (
+              {product.variants.map((variant, index) => (
                 <TableRow
-                  key={String(getVariantField(variant, "variant_id", "id") ?? index)}
-                  className="cursor-pointer text-lg hover:bg-muted/60 h-4"
+                  key={variant.variant_id}
+                  className={`cursor-pointer text-lg h-4 ${
+                    highlightIndex === index ? "bg-blue-100 dark:bg-blue-900" : "hover:bg-muted/60"
+                  }`}
                   onClick={() => onSelect?.(variant)}
                 >
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{variant.label ?? "—"}</TableCell>
-                  <TableCell>{Number(variant.retail_price).toFixed(2) ?? "—"}</TableCell>
-                  <TableCell>{Number(variant.discount).toFixed(2) ?? "—"}</TableCell>
+                  <TableCell>{Number(variant.retail_price).toFixed(2)}</TableCell>
+                  <TableCell>{Number(variant.discount).toFixed(2)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
