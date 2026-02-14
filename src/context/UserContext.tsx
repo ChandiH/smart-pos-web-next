@@ -10,7 +10,11 @@ export type UserCredentials = {
   role_id: number;
   employee_image?: string;
   role_name?: string;
-  user_access?: number[];
+  user_access?: number[] | string[];
+  scopes?: string[];
+  scope?: string | string[];
+  permissions?: string[];
+  access?: string[];
   employee_email?: string;
   employee_phone?: string;
 } & JwtPayload;

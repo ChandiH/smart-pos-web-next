@@ -10,7 +10,11 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "./ui";
 
 type UserWithAccess = {
-  user_access?: number[];
+  user_access?: number[] | string[];
+  scopes?: string[];
+  scope?: string | string[];
+  permissions?: string[];
+  access?: string[];
 };
 
 type AccessFrameProps = {
@@ -27,6 +31,39 @@ const findAccessByName = (
   accessName: string,
   permissions: AccessPermission[]
 ) => permissions.find((item) => item.access_name === accessName);
+
+const normalizeScopes = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof value === "string") {
+    return value.split(/[,\s]+/).filter(Boolean);
+  }
+  return [];
+};
+
+const getUserScopes = (user: UserWithAccess | null): string[] =>
+  normalizeScopes(
+    user?.scopes ?? user?.scope ?? user?.permissions ?? user?.access ?? user?.user_access
+  );
+
+const hasScope = (requiredScope: string, userScopes: string[]) => {
+  if (userScopes.includes(requiredScope)) {
+    return true;
+  }
+
+  const [page, action] = requiredScope.split(":");
+  if (!page || !action) {
+    return false;
+  }
+
+  return [
+    `${page}:all`,
+    `${page}:*`,
+    `*:${action}`,
+    "*:all",
+  ].some((scope) => userScopes.includes(scope));
+};
 
 const AccessFrame = ({
   accessLevel,
@@ -49,18 +86,32 @@ const AccessFrame = ({
       return true;
     }
 
+    const requiredLevels = Array.isArray(accessLevel)
+      ? accessLevel
+      : [accessLevel];
+
+    const scopeRequirements = requiredLevels.filter((level) =>
+      level.includes(":")
+    );
+    if (scopeRequirements.length > 0) {
+      const userScopes = getUserScopes(currentUser as UserWithAccess | null);
+      if (userScopes.length === 0) {
+        return false;
+      }
+      return scopeRequirements.some((level) => hasScope(level, userScopes));
+    }
+
     const userAccess = (currentUser as UserWithAccess | null)?.user_access;
     if (!Array.isArray(userAccess)) {
       return false;
     }
 
-    const requiredLevels = Array.isArray(accessLevel)
-      ? accessLevel
-      : [accessLevel];
-
     return requiredLevels.some((level) => {
       const permission = findAccessByName(level, accessList());
       if (!permission) {
+        return false;
+      }
+      if (typeof permission.access_type_id !== "number") {
         return false;
       }
       return userAccess.includes(permission.access_type_id);

@@ -144,7 +144,7 @@ export type UserRole = {
   role_id: number;
   role_name: string;
   role_desc: string;
-  user_access: number[];
+  user_access: Array<number | string>;
 };
 
 export type VariableOptions = {

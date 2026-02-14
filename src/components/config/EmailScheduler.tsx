@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Toast } from "@/components/ui";
+import http from "@/services/httpService";
 
 const EmailScheduler = () => {
   const [time, setTime] = useState("00:00");
@@ -15,7 +15,7 @@ const EmailScheduler = () => {
   useEffect(() => {
     const fetchSchedule = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/email/get-schedule");
+        const res = await http.get<{ time?: string }>("/email/get-schedule");
         if (res.data?.time) setTime(res.data.time);
       } catch (err) {
         console.error(err);
@@ -32,7 +32,7 @@ const EmailScheduler = () => {
     if (!time) return Toast.error("Please select a valid time.");
     setLoading(true);
 
-    const promise = axios.post("http://localhost:4000/email/set-schedule", { time });
+    const promise = http.post("/email/set-schedule", { time });
     Toast.promise(promise, {
       loading: "Updating email schedule…",
       success: "✅ Schedule updated successfully!",
@@ -51,7 +51,7 @@ const EmailScheduler = () => {
   const handleSendNow = async () => {
     setLoading(true);
 
-    const promise = axios.post("http://localhost:4000/email/send-now");
+    const promise = http.post("/email/send-now");
     Toast.promise(promise, {
       loading: "Sending email now…",
       success: "📧 Email sent successfully!",

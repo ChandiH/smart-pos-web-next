@@ -72,8 +72,9 @@ export interface RewardsPointsSetting {
 }
 
 export interface AccessPermission {
-  access_type_id: number;
+  access_type_id?: number;
   access_name: string;
+  access_scope?: string;
 }
 
 export interface Branch {

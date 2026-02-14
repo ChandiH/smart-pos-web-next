@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import orderBy from "lodash/orderBy";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
@@ -36,7 +36,7 @@ type Role = {
   role_id: Identifier;
   role_name: string;
   role_desc?: string;
-  user_access: number[];
+  user_access: Array<number | string>;
 };
 
 type SortDirection = "asc" | "desc";
@@ -52,7 +52,7 @@ const UserRoles = () => {
   const [accessLevels, setAccessLevels] = useState<AccessPermission[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [selectedAccess, setSelectedAccess] = useState<number[]>([]);
+  const [selectedAccess, setSelectedAccess] = useState<string[]>([]);
   const [isSettingChanged, setIsSettingChanged] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
@@ -64,7 +64,17 @@ const UserRoles = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchData = async () => {
+  const normalizeAccess = useCallback((access: unknown): string[] => {
+    if (Array.isArray(access)) {
+      return access.filter((item): item is string => typeof item === "string");
+    }
+    if (typeof access === "string") {
+      return access.split(/[,\s]+/).filter(Boolean);
+    }
+    return [];
+  }, []);
+
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       const [{ data: roleData }] = await Promise.all([getUserRoles()]);
@@ -76,7 +86,7 @@ const UserRoles = () => {
       setFilteredRoles(roleList);
       setAccessLevels(accessList());
       setSelectedRole(roleList[0] ?? null);
-      setSelectedAccess(roleList[0]?.user_access ?? []);
+      setSelectedAccess(normalizeAccess(roleList[0]?.user_access));
     } catch (error) {
       console.error("Failed to load user roles", error);
       Toast.error("Unable to load user roles. Please try again.");
@@ -85,11 +95,11 @@ const UserRoles = () => {
       setIsSettingChanged(false);
       setShowForm(false);
     }
-  };
+  }, [normalizeAccess]);
 
   useEffect(() => {
     void fetchData();
-  }, []);
+  }, [fetchData]);
 
   useEffect(() => {
     setFilteredRoles(
@@ -98,6 +108,11 @@ const UserRoles = () => {
       )
     );
   }, [roles, searchQuery]);
+
+  const availableAccess = useMemo(
+    () => accessLevels.filter((access) => access.access_scope),
+    [accessLevels]
+  );
 
   const sortedRoles = useMemo(
     () =>
@@ -116,7 +131,7 @@ const UserRoles = () => {
 
   const handleRoleSelect = (role: Role) => {
     setSelectedRole(role);
-    setSelectedAccess(role.user_access ?? []);
+    setSelectedAccess(normalizeAccess(role.user_access));
     setShowForm(false);
     setIsSettingChanged(false);
   };
@@ -140,12 +155,12 @@ const UserRoles = () => {
     }
   };
 
-  const handleAccessToggle = (accessId: number) => {
+  const handleAccessToggle = (accessScope: string) => {
     setSelectedAccess((prev) => {
-      if (prev.includes(accessId)) {
-        return prev.filter((id) => id !== accessId);
+      if (prev.includes(accessScope)) {
+        return prev.filter((id) => id !== accessScope);
       }
-      return [...prev, accessId];
+      return [...prev, accessScope];
     });
     setIsSettingChanged(true);
   };
@@ -325,22 +340,30 @@ const UserRoles = () => {
           <div className="space-y-3">
             <p className="text-sm font-medium">Permissions</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              {accessLevels.map((access) => (
-                <label
-                  key={access.access_type_id}
-                  className="flex items-center gap-2 rounded-md border p-3"
-                >
-                  <Checkbox
-                    checked={selectedAccess.includes(access.access_type_id)}
-                    onCheckedChange={() =>
-                      handleAccessToggle(access.access_type_id)
-                    }
-                  />
-                  <span className="text-sm capitalize">
-                    {access.access_name.replace(/([A-Z])/g, " $1").trim()}
-                  </span>
-                </label>
-              ))}
+              {availableAccess.map((access) => {
+                if (!access.access_scope) return null;
+                return (
+                  <label
+                    key={access.access_scope}
+                    className="flex items-center gap-3 rounded-md border p-3"
+                  >
+                    <Checkbox
+                      checked={selectedAccess.includes(access.access_scope)}
+                      onCheckedChange={() =>
+                        handleAccessToggle(access.access_scope)
+                      }
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">
+                        {access.access_name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {access.access_scope}
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
         </CardContent>

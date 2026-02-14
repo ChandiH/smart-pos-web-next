@@ -172,7 +172,7 @@ export const Dashboard = () => {
   const totalOrders = parseNumber(summary?.total_orders);
 
   return (
-    <AccessFrame accessLevel="report" onDenied={() => router.replace("/sale")}>
+    <AccessFrame accessLevel="report:view" onDenied={() => router.replace("/sale")}>
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DashboardTile

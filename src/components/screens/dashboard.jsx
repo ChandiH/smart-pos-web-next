@@ -57,7 +57,7 @@ const Dashboard = ({ history }) => {
   };
 
   return (
-    <AccessFrame accessLevel={"report"} onDenied={() => history.replace("/sale")}>
+    <AccessFrame accessLevel={"report:view"} onDenied={() => history.replace("/sale")}>
       <div className="container">
         <div className="col">
           <div className="row mb-3 p-2 rounded border">

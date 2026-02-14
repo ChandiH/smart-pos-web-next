@@ -1,14 +1,36 @@
 import axios, {
   AxiosError,
+  AxiosHeaders,
   type AxiosInstance,
   type AxiosRequestConfig,
   type AxiosResponse,
+  type InternalAxiosRequestConfig,
 } from "axios";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND ?? "";
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL || undefined,
+});
+
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const headerValue = token ?? "";
+
+  if (config.headers instanceof AxiosHeaders) {
+    if (!config.headers.has("x-access-token")) {
+      config.headers.set("x-access-token", headerValue);
+    }
+  } else {
+    const headers = config.headers ?? {};
+    if (!("x-access-token" in headers)) {
+      headers["x-access-token"] = headerValue;
+    }
+    config.headers = headers;
+  }
+
+  return config;
 });
 
 apiClient.interceptors.response.use(
