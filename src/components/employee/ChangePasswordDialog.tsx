@@ -18,14 +18,16 @@ import { resetPassword } from "@/services/authenticationService";
 type ChangePasswordDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultUsername?: string;
 };
 
 const ChangePasswordDialog = ({
   open,
   onOpenChange,
+  defaultUsername = "",
 }: ChangePasswordDialogProps) => {
   const [formData, setFormData] = useState({
-    username: "",
+    username: defaultUsername,
     password: "",
     newPassword: "",
     confirmNewPassword: "",
@@ -43,7 +45,7 @@ const ChangePasswordDialog = ({
 
   const resetState = () => {
     setFormData({
-      username: "",
+      username: defaultUsername,
       password: "",
       newPassword: "",
       confirmNewPassword: "",
@@ -81,13 +83,31 @@ const ChangePasswordDialog = ({
       return;
     }
 
+    if (formData.newPassword.length < 6) {
+      setErrors((prev) => ({
+        ...prev,
+        newPassword: "New password must be at least 6 characters long",
+      }));
+      return;
+    }
+
+    // check if new password has atleast one letter
+    if (!/[A-Za-z]/.test(formData.newPassword)) {
+      setErrors((prev) => ({
+        ...prev,
+        newPassword: "New password must contain at least one letter",
+      }));
+      return;
+    }
+
     try {
       setIsSubmitting(true);
-      await resetPassword(
+      const response = await resetPassword(
         formData.username,
         formData.password,
         formData.newPassword
       );
+      console.log("Password change response:", response);
       Toast.success("Password changed successfully");
       onOpenChange(false);
       resetState();

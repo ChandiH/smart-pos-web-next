@@ -23,6 +23,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
+  Separator,
   ThemeToggle,
 } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
@@ -31,6 +32,7 @@ import { CLIENT_BRANDING } from "@/config/env";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
 import moment from "moment";
+import { DropdownMenuSeparator } from "@radix-ui/react-dropdown-menu";
 
 // Simple logo component for the navbar
 const Logo = (props: React.SVGAttributes<SVGElement>) => {
@@ -198,7 +200,7 @@ const defaultNavigationLinks: NavbarNavItem[] = [
 ];
 
 // User Menu Component
-const UserMenu = ({ handleLogout }: { handleLogout: () => void }) => {
+const UserMenu = ({ handleLogout, handleProfileClick }: { handleLogout: () => void, handleProfileClick: () => void }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -210,6 +212,8 @@ const UserMenu = ({ handleLogout }: { handleLogout: () => void }) => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={handleProfileClick}>Profile</DropdownMenuItem>
+        <Separator className="my-1" />
         <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -269,6 +273,10 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
         router.push(href);
       }
       console.log("cli");
+    };
+
+    const handleProfileClick = () => {
+      router.push("/user-profile");
     };
 
     return (
@@ -483,7 +491,7 @@ export const Navbar = React.forwardRef<HTMLElement, NavbarProps>(
               <span className="text-xs">Welcome,</span>
               <span className="text-lg">{currentUser?.employee_name}</span>
             </div>
-            {currentUser && <UserMenu handleLogout={handleLogout} />}
+            {currentUser && <UserMenu handleLogout={handleLogout} handleProfileClick={handleProfileClick} />}
             <ThemeToggle />
           </div>
         </div>

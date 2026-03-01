@@ -16,13 +16,15 @@ type VerifyUserDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onVerified: (token?: string) => void;
+  defaultUsername?: string;
 };
 const VerifyUserDialog = ({
   open,
   onOpenChange,
   onVerified,
+  defaultUsername = "",
 }: VerifyUserDialogProps) => {
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(defaultUsername);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -49,7 +51,7 @@ const VerifyUserDialog = ({
   };
   const handleClose = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setUsername("");
+      setUsername(defaultUsername);
       setPassword("");
       setError(null);
     }

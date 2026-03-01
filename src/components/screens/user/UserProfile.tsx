@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Toast } from "@/components/ui";
 import { getImageUrl } from "@/services/imageHandler";
-import { updateEmployeeImage } from "@/services/employeeService";
+import { updateEmployee, updateEmployeeImage } from "@/services/employeeService";
 import VerifyUserDialog from "@/components/employee/VerifyUserDialog";
 import UploadImageDialog from "@/components/employee/UploadImageDialog";
 import ChangePasswordDialog from "@/components/employee/ChangePasswordDialog";
@@ -119,10 +119,26 @@ const UserProfile = () => {
     );
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    setIsVerified(false);
-    Toast.success("Profile changes saved locally");
+  const handleSave = async () => {
+    if (!editedUser || !currentUser) return;
+
+    try {
+      await updateEmployee(currentUser.employee_id, {
+        employee_name: editedUser.employee_name,
+        employee_username: editedUser.employee_username,
+        employee_phone: editedUser.employee_phone,
+      });
+      setCurrentUser({ ...currentUser, ...editedUser });
+      setIsEditing(false);
+      setIsVerified(false);
+      Toast.success("Profile updated successfully");
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      const message =
+        (error as { response?: { data?: { error?: string } } }).response?.data
+          ?.error ?? "Unable to update profile.";
+      Toast.error(message);
+    }
   };
 
   const handleVerifySuccess = () => {
@@ -193,6 +209,7 @@ const UserProfile = () => {
             <Button
               variant="outline"
               onClick={() => setIsUploadDialogOpen(true)}
+              disabled
             >
               <Upload className="mr-2 h-4 w-4" />
               Upload New Image
@@ -273,6 +290,7 @@ const UserProfile = () => {
         open={isVerifyDialogOpen}
         onOpenChange={setIsVerifyDialogOpen}
         onVerified={() => handleVerifySuccess()}
+        defaultUsername={currentUser.employee_username}
       />
       <UploadImageDialog
         open={isUploadDialogOpen}
@@ -282,6 +300,7 @@ const UserProfile = () => {
       <ChangePasswordDialog
         open={isPasswordDialogOpen}
         onOpenChange={setIsPasswordDialogOpen}
+        defaultUsername={currentUser.employee_username}
       />
     </>
   );
