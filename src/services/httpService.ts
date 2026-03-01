@@ -41,11 +41,11 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       config.headers.set("x-access-token", headerValue);
     }
   } else {
-    const headers = config.headers ?? {};
+    const headers = (config.headers ?? {}) as Record<string, string>;
     if (!("x-access-token" in headers)) {
       headers["x-access-token"] = headerValue;
     }
-    config.headers = headers;
+    config.headers = new AxiosHeaders(headers);
   }
 
   return config;

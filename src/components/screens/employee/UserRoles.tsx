@@ -349,9 +349,11 @@ const UserRoles = () => {
                   >
                     <Checkbox
                       checked={selectedAccess.includes(access.access_scope)}
-                      onCheckedChange={() =>
-                        handleAccessToggle(access.access_scope)
-                      }
+                      onCheckedChange={() => {
+                        if (access.access_scope) {
+                          handleAccessToggle(access.access_scope);
+                        }
+                      }}
                     />
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">

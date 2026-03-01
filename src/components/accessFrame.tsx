@@ -114,7 +114,7 @@ const AccessFrame = ({
       if (typeof permission.access_type_id !== "number") {
         return false;
       }
-      return userAccess.includes(permission.access_type_id);
+      return (userAccess as (number | string)[]).includes(permission.access_type_id);
     });
   }, [accessLevel, currentUser, loading]);
 
