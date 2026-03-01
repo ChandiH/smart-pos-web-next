@@ -147,9 +147,9 @@ const ProductForm = () => {
       const payload: ProductWithVariantsAddRequest = {
         product_name: values.product_name,
         product_desc: values.product_desc,
-        category_id: Number(values.category_id),
+        category_id: values.category_id,
         product_barcode: values.product_barcode,
-        supplier_id: Number(values.supplier_id),
+        supplier_id: values.supplier_id,
         variants: productVariants,
         stock_type: values.stock_type,
       };
