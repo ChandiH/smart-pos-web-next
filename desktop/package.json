@@ -1,0 +1,90 @@
+{
+  "name": "smart-pos-desktop",
+  "version": "1.0.0",
+  "description": "Smart POS Desktop Application — Electron shell with embedded PostgreSQL",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:frontend": "cd ../  && pnpm build",
+    "build:backend": "cd ../../smart_pos_server && npm run build",
+    "build:all": "npm run build:frontend && npm run build:backend",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build:all && electron-builder",
+    "dist:win": "npm run build:all && electron-builder --win"
+  },
+  "dependencies": {
+    "embedded-postgres": "16.12.0-beta.16",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^35.2.1",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.smartpos.desktop",
+    "productName": "Smart POS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "resources/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../.next/standalone",
+        "to": "frontend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../.next/static",
+        "to": "frontend/.next/static",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../public",
+        "to": "frontend/public",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../../smart_pos_server/dist",
+        "to": "backend/dist",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../../smart_pos_server/node_modules",
+        "to": "backend/node_modules",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../../smart_pos_server/prisma",
+        "to": "backend/prisma",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../../smart_pos_server/node_modules/.prisma",
+        "to": "backend/node_modules/.prisma",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Smart POS"
+    }
+  }
+}
