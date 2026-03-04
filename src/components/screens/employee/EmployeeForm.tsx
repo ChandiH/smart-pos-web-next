@@ -157,8 +157,8 @@ const EmployeeForm = () => {
           employee_name: values.employee_name,
           employee_email: values.employee_email,
           employee_phone: values.employee_phone,
-          role_id: Number(values.role_id),
-          branch_id: Number(values.branch_id),
+          role_id: values.role_id,
+          branch_id: values.branch_id,
         });
         Toast.success("Employee updated");
       } else {
@@ -167,8 +167,8 @@ const EmployeeForm = () => {
           employee_userName: values.employee_userName,
           employee_email: values.employee_email,
           employee_phone: values.employee_phone,
-          role_id: Number(values.role_id),
-          branch_id: Number(values.branch_id),
+          role_id: values.role_id,
+          branch_id: values.branch_id,
           employee_image: "",
         });
         Toast.success("Employee added");
