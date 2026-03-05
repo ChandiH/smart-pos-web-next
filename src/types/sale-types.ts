@@ -1,10 +1,10 @@
 export interface SalesOrderDetails {
-  customer_id?: number | string;
-  cashier_id: number | string;
+  customer_id?: string;
+  cashier_id: string;
   total_amount: number | string;
   payment_method: string | null;
   reference: string | null;
-  branch_id: number | string;
+  branch_id: string;
   rewards_points?: number | string | null;
   product_count?: number | string;
   credit_payment?: number | string | null;

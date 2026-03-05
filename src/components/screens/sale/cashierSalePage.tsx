@@ -383,7 +383,7 @@ const CashierSalePage = () => {
     }
 
     const order: SalesOrderDetails = {
-      customer_id: customer && customer.customer_id !== 0 ? customer.customer_id : undefined,
+      customer_id: customer && customer.customer_id ? customer.customer_id : undefined,
       cashier_id: currentUser.employee_id,
       total_amount: totals.grandTotal.toFixed(2),
       payment_method: paymentMethod,
@@ -437,7 +437,7 @@ const CashierSalePage = () => {
     }
 
     const order: SalesOrderDetails = {
-      customer_id: customer && customer.customer_id !== 0 ? customer.customer_id : undefined,
+      customer_id: customer && customer.customer_id ? customer.customer_id : undefined,
       cashier_id: currentUser.employee_id,
       total_amount: totals.grandTotal.toFixed(2),
       payment_method: paymentMethod,

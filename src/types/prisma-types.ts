@@ -16,7 +16,7 @@ export type MoneyString = string; // use string to preserve precision (e.g., "10
  * ========================= */
 
 export type AccessType = {
-  access_type_id: number;
+  access_type_id: UUID;
   access_name: string;
 };
 
@@ -30,12 +30,12 @@ export type Branch = {
 };
 
 export type Category = {
-  category_id: number;
+  category_id: UUID;
   category_name: string;
 };
 
 export type Supplier = {
-  supplier_id: number;
+  supplier_id: UUID;
   supplier_name: string;
   supplier_email: string | null;
   supplier_phone: string;
@@ -46,9 +46,9 @@ export type Product = {
   product_id: UUID;
   product_name: string;
   product_desc: string | null;
-  category_id: number;
+  category_id: UUID;
   product_image: string[];
-  supplier_id: number;
+  supplier_id: UUID;
   product_barcode: string;
   stock_type: string | null;
   removed: boolean | null;
@@ -74,12 +74,12 @@ export type Inventory = {
 };
 
 export type PaymentMethod = {
-  payment_method_id: number;
+  payment_method_id: UUID;
   payment_method_name: string;
 };
 
 export type Customer = {
-  customer_id: number;
+  customer_id: string;
   customer_name: string;
   customer_email: string | null;
   customer_phone: string;
@@ -91,9 +91,9 @@ export type Customer = {
 };
 
 export type Employee = {
-  employee_id: number;
+  employee_id: string;
   employee_name: string;
-  role_id: number;
+  role_id: UUID;
   hired_date: ISODateString | null;
   employee_email: string | null;
   employee_phone: string;
@@ -104,22 +104,22 @@ export type Employee = {
 };
 
 export type SalesHistory = {
-  order_id: number;
-  customer_id: number | null;
-  cashier_id: number;
+  order_id: UUID;
+  customer_id: string | null;
+  cashier_id: string | null;
   branch_id: UUID;
   created_at: ISODateString | null;
   total_amount: MoneyString | null;
   profit: MoneyString | null;
   rewards_points: MoneyString | null;
-  payment_method_id: number | null;
+  payment_method_id: UUID | null;
   reference_id: string | null;
   product_count: number | null;
 };
 
 export type Cart = {
-  cart_id: number;
-  order_id: number | null;
+  cart_id: UUID;
+  order_id: UUID | null;
   product_id: UUID;
   quantity: number;
   sub_total_amount: MoneyString | null;
@@ -127,28 +127,28 @@ export type Cart = {
 };
 
 export type Discount = {
-  discount_id: number;
+  discount_id: UUID;
   discount_name: string;
   discount_desc: string | null;
   discount_percentage: string; // Decimal(5,2) -> string (e.g., "12.50")
 };
 
 export type UserCredentials = {
-  user_id: number;
+  user_id: UUID;
   username: string;
   password: string;
   updated_on: ISODateString | null;
 };
 
 export type UserRole = {
-  role_id: number;
+  role_id: UUID;
   role_name: string;
   role_desc: string;
-  user_access: Array<number | string>;
+  user_access: Array<string>;
 };
 
 export type VariableOptions = {
-  variable_id: number;
+  variable_id: UUID;
   variable_name: string;
   created_at: ISODateString | null;
   variable_value: MoneyString | null;
@@ -157,11 +157,11 @@ export type VariableOptions = {
 
 export type WorkingHour = {
   branch_id: UUID;
-  employee_id: number;
+  employee_id: string;
   date: string; // stored as VarChar(12) in DB
   shift_on: string; // VarChar(5)
   shift_off: string; // VarChar(5)
-  updated_by: number;
+  updated_by: string;
   present: boolean;
   total_hours: string | null; // Decimal(100,2) -> string
 };
@@ -181,8 +181,8 @@ export type WorkingHourWithEmployee = WorkingHour & {
 
 /** Cart item including product info (commonly used on POS screens) */
 export interface CartItemWithProduct {
-  cart_id: number;
-  order_id: number | null;
+  cart_id: UUID;
+  order_id: UUID | null;
   quantity: number;
   sub_total_amount: MoneyString | null;
   created_at: ISODateString | null;

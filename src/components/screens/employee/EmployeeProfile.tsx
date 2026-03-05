@@ -147,10 +147,10 @@ const EmployeeProfile = () => {
           (employee.employee_contact as string | undefined) ??
           "",
         role_id: selectedRole
-          ? Number(selectedRole)
+          ? selectedRole
           : (employee.role_id as Identifier),
         branch_id: selectedBranch
-          ? Number(selectedBranch)
+          ? selectedBranch
           : (employee.branch_id as Identifier),
       };
 

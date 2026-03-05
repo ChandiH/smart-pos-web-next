@@ -65,7 +65,7 @@ const EmployeeWorkingHour = () => {
 
       const unmarked = (Array.isArray(employees) ? employees : [])
         .filter((employee) => !markedRecords.find((record) => record.employee_id === employee.employee_id))
-        .filter((employee) => employee.role_id !== 1) // Exclude owner role
+        .filter((employee) => employee.user_role?.role_name?.toLowerCase() !== "owner") // Exclude owner role
         .map((employee) => mapToShiftRecord(employee));
 
       setMarkedEmployees(markedRecords);
@@ -89,7 +89,7 @@ const EmployeeWorkingHour = () => {
     shift_off: "",
     total_hours: 0,
     present: true,
-    updated_by: user.employee_id ?? 0,
+    updated_by: user.employee_id ?? "",
     date: selectedDate,
   });
 

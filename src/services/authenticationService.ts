@@ -26,10 +26,10 @@ export function authenticate({
 type RegisterEmployeePayload = {
   employee_name: string;
   employee_userName: string;
-  role_id: number | string;
+  role_id: string;
   employee_email: string;
   employee_phone: string;
-  branch_id: number | string;
+  branch_id: string;
   employee_image?: string;
 };
 
@@ -40,8 +40,8 @@ export function registerEmployee(payload: RegisterEmployeePayload) {
     employee_email: payload.employee_email,
     employee_phone: payload.employee_phone,
     employee_image: payload.employee_image ?? "",
-    branch_id: Number(payload.branch_id),
-    role_id: Number(payload.role_id),
+    branch_id: payload.branch_id,
+    role_id: payload.role_id,
   });
 }
 

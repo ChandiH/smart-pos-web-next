@@ -4,7 +4,7 @@ export type API_RESPONSE<T> = {
   error?: any;
 };
 
-export type Identifier = string | number;
+export type Identifier = string;
 
 export interface Customer {
   customer_id?: Identifier;
@@ -72,7 +72,7 @@ export interface RewardsPointsSetting {
 }
 
 export interface AccessPermission {
-  access_type_id?: number;
+  access_type_id?: string;
   access_name: string;
   access_scope?: string;
 }

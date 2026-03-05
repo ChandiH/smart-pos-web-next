@@ -44,7 +44,7 @@ const Categories = () => {
 
       try {
         setIsLoading(true);
-        const { data } = await getCategory({ category_id: Number(categoryId) });
+        const { data } = await getCategory({ category_id: categoryId });
         const category = data as Category;
         form.reset({
           category_name: category.category_name ?? "",

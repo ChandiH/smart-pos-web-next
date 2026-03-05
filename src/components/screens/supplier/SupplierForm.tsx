@@ -55,7 +55,7 @@ const SupplierForm = () => {
 
       try {
         setIsLoading(true);
-        const { data: supplier } = await getSupplier({ supplier_id: Number(supplierId) });
+        const { data: supplier } = await getSupplier({ supplier_id: supplierId });
         setCurrentSupplierId(supplier.supplier_id ?? null);
         form.reset({
           supplier_name: supplier.supplier_name ?? "",

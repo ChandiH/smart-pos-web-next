@@ -54,7 +54,7 @@ const SupplierProfile = () => {
     const loadSupplier = async () => {
       try {
         setIsLoading(true);
-        const { data } = await getSupplier({ supplier_id: Number(supplierId) });
+        const { data } = await getSupplier({ supplier_id: supplierId });
         setSupplier(data ?? null);
       } catch (error) {
         console.error("Failed to load supplier products", error);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isAxiosError } from "axios";
 
 import {
   Dialog,
@@ -113,9 +114,13 @@ const ChangePasswordDialog = ({
       resetState();
     } catch (error) {
       console.error("Failed to change password", error);
-      const message =
-        (error as { response?: { data?: { error?: string } } }).response?.data
-          ?.error ?? "Unable to change password.";
+      let message = "Unable to change password.";
+      if (isAxiosError(error)) {
+        const data = error.response?.data as Record<string, unknown> | undefined;
+        if (typeof data?.error === "string") {
+          message = data.error;
+        }
+      }
       Toast.error(message);
     } finally {
       setIsSubmitting(false);

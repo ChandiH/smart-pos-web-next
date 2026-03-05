@@ -52,14 +52,14 @@ const CustomerForm = () => {
 
       try {
         setIsLoading(true);
-        const { data: customer } = await getCustomer({ customer_id: Number(customerId) });
+        const { data: customer } = await getCustomer({ customer_id: customerId });
         setCurrentCustomerId(customer.customer_id ?? null);
         form.reset({
           customer_name: customer.customer_name ?? "",
           customer_phone: customer.customer_phone ?? "",
           customer_email: customer.customer_email ?? "",
           customer_address: customer.customer_address ?? "",
-        });
+        }); 
       } catch (error) {
         console.error("Failed to load customer", error);
         Toast.error("Unable to load customer details.");

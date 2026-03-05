@@ -44,9 +44,9 @@ type Option = {
 const defaultValues: ProductAddRequest = {
   product_name: "",
   product_desc: "",
-  category_id: 0,
+  category_id: "",
   product_barcode: "",
-  supplier_id: 0,
+  supplier_id: "",
   stock_type: defaultStockType,
 };
 
@@ -242,7 +242,7 @@ const ProductForm = () => {
                       <FormLabel>Category</FormLabel>
                       <FormControl>
                         <Select
-                          value={field.value == 0 ? undefined : String(field.value)}
+                          value={field.value || undefined}
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="w-full">
@@ -272,7 +272,7 @@ const ProductForm = () => {
                       <FormLabel>Supplier</FormLabel>
                       <FormControl>
                         <Select
-                          value={field.value == 0 ? undefined : String(field.value)}
+                          value={field.value || undefined}
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="w-full">

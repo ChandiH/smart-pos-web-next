@@ -3,14 +3,14 @@ import { createContext } from "react";
 
 export type UserCredentials = {
   employee_username?: string;
-  employee_id: number;
+  employee_id: string;
   employee_name?: string;
-  branch_id: number;
+  branch_id: string;
   branch_name?: string;
-  role_id: number;
+  role_id: string;
   employee_image?: string;
   role_name?: string;
-  user_access?: number[] | string[];
+  user_access?: string[];
   scopes?: string[];
   scope?: string | string[];
   permissions?: string[];
