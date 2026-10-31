@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
-import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Pencil, Trash2 } from "lucide-react";
 
 import {
   Button,
@@ -196,6 +196,15 @@ const ProductCatalog = () => {
                     <TableCell>{product.category?.category_name ?? "—"}</TableCell>
                     <TableCell>{product.product_barcode ?? "—"}</TableCell>
                     <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => router.push(`/inventory/${product.product_id}`)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+
                       <Button
                         size="icon"
                         variant="destructive"
@@ -203,6 +212,7 @@ const ProductCatalog = () => {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

@@ -13,13 +13,15 @@ import { getSupplier } from "@/services/supplierService";
 import { Product, Supplier, SupplierWithProducts } from "@/types/prisma-types";
 import { SortDirection } from "@/types/common-types";
 
+type ProductColumnKey = keyof Product | "quantity";
+
 type SortColumn = {
   path: keyof Product | "category_name";
   order: SortDirection;
 };
 
 const productColumns: {
-  key: keyof Product | "product_barcode";
+  key: ProductColumnKey;
   label: string;
   path?: SortColumn["path"];
   sortable?: boolean;
@@ -31,6 +33,10 @@ const productColumns: {
     label: "Barcode",
     path: "product_barcode",
     sortable: true,
+  },
+  {
+    key: "quantity",
+    label: "Quantity",
   },
 ];
 
@@ -201,6 +207,12 @@ const SupplierProfile = () => {
                     <TableRow key={String(product.product_id ?? index)}>
                       <TableCell className="font-medium">{product.product_name ?? "Unnamed"}</TableCell>
                       <TableCell>{product.product_barcode ?? "—"}</TableCell>
+                      <TableCell>
+                        {product.inventory?.reduce(
+                          (total, item) => total + Number(item.quantity ?? 0),
+                          0
+                        ) ?? 0}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (

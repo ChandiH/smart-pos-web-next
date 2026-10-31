@@ -207,7 +207,7 @@ export type ProductWithInventory = Product & {
 };
 
 export type SupplierWithProducts = Supplier & {
-  product: Product[];
+  product: ProductWithInventory[];
 };
 
 export type ProductWithVariants = Product & {

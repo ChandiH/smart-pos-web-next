@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import orderBy from "lodash/orderBy";
-import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Plus, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +54,11 @@ const columns: ColumnConfig[] = [
     sortable: true,
   },
   { key: "supplier_address", label: "Address" },
+  {
+    key: "actions",
+    label: "Actions",
+    align: "right",
+  },
 ];
 
 const PAGE_SIZE = 30;
@@ -141,6 +146,10 @@ const Suppliers = () => {
 
   const handleAddSupplier = () => {
     router.push("/suppliers/new");
+  };
+
+  const handleEdit = (supplierId: number | string) => {
+    router.push(`/suppliers/${supplierId}`);
   };
 
   const renderSortIcon = (column: ColumnConfig) => {
@@ -238,6 +247,18 @@ const Suppliers = () => {
                     </TableCell>
                     <TableCell>
                       {String(getSupplierField(supplier, "supplier_address", "address") ?? "Not provided")}
+                    </TableCell>
+                    <TableCell className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(supplier.supplier_id);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

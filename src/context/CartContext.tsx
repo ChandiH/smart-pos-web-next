@@ -7,11 +7,26 @@ export type ProductCartItem = Product & {
 };
 
 export type UserContextType = {
+  // Current active bill
+  activeBill: number;
+  setActiveBill: Dispatch<SetStateAction<number>>;
+
+  // All bills
+  carts: ProductCartItem[][];
+  setCarts: Dispatch<SetStateAction<ProductCartItem[][]>>;
+
+  // Active cart
   cart: ProductCartItem[];
   setCart: Dispatch<SetStateAction<ProductCartItem[]>>;
 };
 
 const CartContext = createContext<UserContextType>({
+  activeBill: 0,
+  setActiveBill: () => {},
+
+  carts: [[], [], []],
+  setCarts: () => {},
+
   cart: [],
   setCart: () => {},
 });

@@ -3,7 +3,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2, QrCode } from "lucide-react";
+import { Loader2, QrCode, } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -267,6 +267,16 @@ const ConfigScreen = () => {
               {
                 label: "Edit User Roles",
                 onClick: () => router.push("/employee/roles"),
+              },
+            ]}
+          />
+
+          <ActionCard
+            title="Receipt Design"
+            buttons={[
+              {
+                label: "Edit Receipt Design",
+                onClick: () => router.push("/config/receipt-design"),
               },
             ]}
           />

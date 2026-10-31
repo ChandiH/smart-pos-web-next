@@ -56,6 +56,15 @@ const BillSummaryDialog = ({
         onPrint();
       }
 
+      // Open drawer only
+      if (e.code === "Escape") {
+        e.preventDefault();
+        sendDrawerOnly().catch((err) => {
+          console.error("Drawer only failed:", err);
+        });
+        return;
+      }
+
       // Next order: Tab key
       if (e.key === "Tab") {
         e.preventDefault();

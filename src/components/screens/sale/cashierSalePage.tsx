@@ -47,7 +47,7 @@ const formatCurrency = (value: number) => `Rs. ${Number.isFinite(value) ? value.
 const CashierSalePage = () => {
   const router = useRouter();
   const { currentUser } = useContext(UserContext);
-  const { cart, setCart } = useContext(CartContext);
+  const {activeBill, setActiveBill, carts, setCarts, cart, setCart } = useContext(CartContext);
   const [products, setProducts] = useState<ProductDetails[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -71,6 +71,23 @@ const CashierSalePage = () => {
     path: "product_name",
     order: "asc",
   });
+
+  const updateCart = (
+    value:
+      | ProductCartItem[]
+      | ((prev: ProductCartItem[]) => ProductCartItem[])
+  ) => {
+    setCarts((prev) => {
+      const copy = [...prev];
+
+      copy[activeBill] =
+        typeof value === "function"
+          ? value(copy[activeBill])
+          : value;
+
+      return copy;
+    });
+  };
 
   const cartSortColumn: SortColumn = useMemo(
     () => ({
@@ -308,22 +325,39 @@ const CashierSalePage = () => {
     setVariantModel(false);
   };
 
-  const totals = useMemo(() => {
-    const quantity = cart.reduce((acc, item) => acc + (item.quantity ?? 0), 0);
-    const subtotal = cart.reduce((acc, item) => acc + (item.quantity ?? 0) * Number(item.variant.retail_price ?? 0), 0);
-    const discount = cart.reduce((acc, item) => acc + (item.quantity ?? 0) * Number(item.variant.discount ?? 0), 0);
+const totals = useMemo(() => {
+  const quantity = cart.reduce(
+    (acc, item) => acc + (item.quantity ?? 0),
+    0
+  );
 
-    const subtotalRounded = Number(subtotal.toFixed(2));
-    const discountRounded = Number(discount.toFixed(2));
-    const grandTotal = Number(Math.max(subtotalRounded - discountRounded, 0).toFixed(2));
+  const subtotal = cart.reduce(
+    (acc, item) =>
+      acc +
+      (item.quantity ?? 0) * Number(item.variant.retail_price ?? 0),
+    0
+  );
 
-    return {
-      quantity,
-      subtotal: subtotalRounded,
-      discount: discountRounded,
-      grandTotal,
-    };
-  }, [cart]);
+  const discount = cart.reduce(
+    (acc, item) =>
+      acc +
+      (item.quantity ?? 0) * Number(item.variant.discount ?? 0),
+    0
+  );
+
+  const subtotalRounded = Number(subtotal.toFixed(2));
+  const discountRounded = Number(discount.toFixed(2));
+  const grandTotal = Number(
+    Math.max(subtotalRounded - discountRounded, 0).toFixed(2)
+  );
+
+  return {
+    quantity,
+    subtotal: subtotalRounded,
+    discount: discountRounded,
+    grandTotal,
+  };
+}, [cart]);
 
   const rewardsPoints = useMemo(() => {
     if (!customer) {
@@ -350,7 +384,7 @@ const CashierSalePage = () => {
   }, [productSearchQuery, products, sortColumn]);
 
   const validateOrder = () => {
-    if (cart.length === 0) return false;
+    if (carts[activeBill].length === 0) return false;
     const hasCustomer = Boolean(customer);
     const cash = Number(paymentDetails);
     return (
@@ -368,7 +402,11 @@ const CashierSalePage = () => {
   };
 
   const handleClearCart = () => {
-    setCart([]);
+    setCarts((prev) => {
+      const copy = [...prev];
+      copy[activeBill] = [];
+      return copy;
+    });
   };
 
   const handleAddCustomer = () => {
@@ -480,7 +518,7 @@ const CashierSalePage = () => {
   const paymentInputType = isCashPayment ? "number" : "text";
 
   const receiptData = useMemo<ReceiptBill | null>(() => {
-    if (cart.length === 0) {
+    if (carts[activeBill].length === 0) {
       return null;
     }
 
@@ -570,7 +608,7 @@ const CashierSalePage = () => {
   );
 
   const billButtonDisabled = useMemo(() => {
-    if (cart.length === 0) {
+    if (carts[activeBill].length === 0) {
       return true;
     }
     if (paymentMethod === "cash" && !customer && parsedPaymentDetails < totals.grandTotal) {
@@ -584,7 +622,7 @@ const CashierSalePage = () => {
     }
 
     return false;
-  }, [cart.length, paymentMethod, customer, parsedPaymentDetails, totals.grandTotal, creditRepayment]);
+  }, [carts[activeBill].length, paymentMethod, customer, parsedPaymentDetails, totals.grandTotal, creditRepayment]);
 
   // -----------------------------
   // Global keyboard handlers
@@ -594,20 +632,39 @@ const CashierSalePage = () => {
       // ignore if modifier keys used
       if (e.altKey || e.metaKey) return;
 
+      // Switch Bills
+      if (e.key === "F1") {
+        e.preventDefault();
+        setActiveBill(0);
+        return;
+      }
+
+      if (e.key === "F2") {
+        e.preventDefault();
+        setActiveBill(1);
+        return;
+      }
+
+      if (e.key === "F3") {
+        e.preventDefault();
+        setActiveBill(2);
+        return;
+      }
+
       // -----------------------------
       // PAYMENT SHORTCUTS
       // -----------------------------
-      if (e.key === "F1") {
+      if (e.key === "F5") {
         e.preventDefault();
         paymentHandler("cash");
         return;
       }
-      if (e.key === "F2") {
+      if (e.key === "F6") {
         e.preventDefault();
         paymentHandler("debitCard");
         return;
       }
-      if (e.key === "F3") {
+      if (e.key === "F7") {
         e.preventDefault();
         if (customer) paymentHandler("credit");
         return;
@@ -647,7 +704,7 @@ const CashierSalePage = () => {
         } else if (paymentMethod === "credit" && current === "payment-details-reference") {
           document.getElementById("credit-repayment")?.focus();
         } else if (current === "credit-repayment" || current === "payment-details-reference") {
-          document.getElementById("bill-button")?.focus();
+          document.getElementById("bill-button")?.click();
         } else {
           document.getElementById("product-search")?.focus();
         }
@@ -693,10 +750,22 @@ const CashierSalePage = () => {
             </CardContent>
           </Card>
 
+          <div className="flex gap-2 mb-4">
+            {[0, 1, 2].map((i) => (
+              <Button
+                key={i}
+                variant={activeBill === i ? "default" : "outline"}
+                onClick={() => setActiveBill(i)}
+              >
+                Bill {i + 1} ({carts[i].length})
+              </Button>
+            ))}
+          </div>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-lg font-semibold">Cart</CardTitle>
-              <Button variant="destructive" size="sm" onClick={handleClearCart} disabled={cart.length === 0}>
+              <Button variant="destructive" size="sm" onClick={handleClearCart} disabled={carts[activeBill].length === 0}>
                 Clear Cart
               </Button>
             </CardHeader>

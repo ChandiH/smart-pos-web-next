@@ -197,7 +197,12 @@ const SaleCartTable = ({ sortColumn, onSort }: SaleCartTableProps) => {
       </TableHeader>
       <TableBody>
         {orderedCart.map((product, index) => {
-          const total = (product.quantity ?? 0) * (Number(product.variant.retail_price) ?? 0);
+          const retailPrice = Number(product.variant.retail_price ?? 0);
+          const discount = Number(product.variant.discount ?? 0);
+          const quantity = Number(product.quantity ?? 0);
+
+          // Total after discount
+          const total = Math.max(retailPrice - discount, 0) * quantity;
           return (
             <TableRow
               key={product.product_id}
